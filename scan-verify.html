@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="km">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VHM Scan Verify</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#10141c;--card:#1a2030;--line:#2a3350;--tx:#e8ecf5;--mut:#8b95b0;--ok:#16a34a;--bad:#dc2626;--warn:#b45309;--acc:#4f8cff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:'Noto Sans Khmer',system-ui,sans-serif;min-height:100vh}
+header{display:flex;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:18px;margin:0;flex:1}
+header input,header button,.tools button,.tools input{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+button{cursor:pointer}
+main{max-width:980px;margin:0 auto;padding:16px}
+#scanbox{width:100%;font-size:28px;padding:16px;border-radius:12px;border:2px solid var(--acc);background:var(--card);color:var(--tx);font-family:inherit}
+#status{margin-top:14px;border-radius:14px;padding:22px;text-align:center;font-size:26px;font-weight:700;background:var(--card);border:2px solid var(--line);min-height:120px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+#status small{font-size:16px;font-weight:400;opacity:.97}
+#status.ok{background:var(--ok);border-color:#4ade80}
+#status.bad{background:var(--bad);border-color:#fca5a5;animation:shake .35s}
+#status.warn{background:var(--warn);border-color:#fcd34d}
+#status.done{background:#0e7490;border-color:#67e8f9}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h2{margin:0 0 8px;font-size:15px;color:var(--mut);font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:400;font-size:13px}
+tr.full td{color:#4ade80}
+tr.expect td{background:#3b1d1d}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--line);font-size:13px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+textarea{width:100%;min-height:90px;background:#0c1018;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px;font-family:monospace;font-size:13px}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9}
+#overlay button{font-size:24px;padding:20px 36px;border-radius:14px;background:var(--acc);color:#fff;border:0;font-family:inherit}
+.mut{color:var(--mut);font-size:13px}
+code{background:#0c1018;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div id="overlay"><button id="start">ចាប់ផ្តើម / Start</button></div>
+
+<header>
+  <h1>VHM Scan Verify · ពិនិត្យទំនិញមុនវេចខ្ចប់</h1>
+  <input id="staff" placeholder="ឈ្មោះបុគ្គលិក / Staff name" size="16">
+  <button id="mute">🔊</button>
+  <button id="reset">Reset order</button>
+</header>
+
+<main>
+  <input id="scanbox" autocomplete="off" autofocus placeholder="Scan order barcode, then each item / ស្កេនកូដ Order រួចស្កេនទំនិញ">
+  <div id="status">Ready · រង់ចាំស្កេន Order</div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>ORDER</h2>
+      <div id="orderinfo" class="mut">No order scanned yet.</div>
+      <table id="items" style="margin-top:8px"></table>
+    </div>
+    <div class="card">
+      <h2>SCAN LOG (today)</h2>
+      <div id="stats" class="mut" style="margin-bottom:6px"></div>
+      <table id="log"></table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>ORDER DATA · ទិន្នន័យ Order</h2>
+    <div class="mut">Upload the order export from Vrich (<code>.xlsx</code>). First sheet, one row per item line.<br>
+    The item barcode is matched to <b>Product Stock Code</b> (e.g. <code>R292-20971</code>), which already includes size and color.</div>
+    <div class="tools">
+      <input type="file" id="file" accept=".xlsx,.xls,.csv">
+      <button id="clear">Clear all orders</button>
+      <span id="count" class="mut"></span>
+    </div>
+    <details style="margin-top:10px"><summary class="mut" style="cursor:pointer">Or paste CSV / test data</summary>
+      <div class="mut" style="margin:6px 0">Header row required. Columns: <code>order,fb_name,code,stock,desc,qty,location</code> (only order and code are required).</div>
+      <textarea id="csv" placeholder="order,fb_name,code,stock,desc,qty,location&#10;1042,Sokha,Y368,Y368-1001,Black L,1,A3"></textarea>
+      <div class="tools"><button id="import">Import pasted data</button></div>
+    </details>
+    <div class="mut" style="margin-top:8px">Storage: <b id="fbstate"></b>. This browser keeps the last 35 days. With Firebase on, every order and every scan is also saved online with no expiry, and any laptop can scan any imported order.</div>
+    <div class="tools"><button id="export">Download scan history (CSV)</button></div>
+    <details style="margin-top:10px"><summary class="mut" style="cursor:pointer">Firebase setup (once per laptop)</summary>
+      <div class="mut" style="margin:6px 0">Firebase console → project <code>vhm-menu</code> → ⚙ Project settings → Your apps → Web app → copy the whole <code>firebaseConfig = { ... }</code> block and paste it here.</div>
+      <textarea id="fbcfg" placeholder='const firebaseConfig = {&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "vhm-menu",&#10;  ...&#10;};'></textarea>
+      <div class="tools"><button id="fbsave">Save &amp; connect</button><button id="fboff">Disconnect</button></div>
+    </details>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ---- OPTIONAL: paste your Firebase web config (vhm-menu project) to sync across devices ---- */
+const ORDERS_COL = 'scan_orders';   // new collection: one doc per order
+const LOG_COL    = 'scan_log';      // new collection: one doc per scan
+const KEEP_DAYS  = 35;              // this browser keeps orders + scan log for 35 days (5 weeks)
+
+const LS = { get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}} };
+
+/* ---------- Firebase (config is pasted into the page once, saved in this browser) ---------- */
+function parseFirebaseConfig(text){
+  const cfg={}; const re=/["']?(\w+)["']?\s*:\s*["']([^"']*)["']/g; let m;
+  while((m=re.exec(text))) cfg[m[1]]=m[2];
+  return cfg.apiKey && cfg.projectId ? cfg : null;
+}
+let db = null;
+const FIREBASE_CONFIG = LS.get('vhm_fbconfig', null);
+if (FIREBASE_CONFIG && window.firebase) {
+  try{ firebase.initializeApp(FIREBASE_CONFIG); db = firebase.firestore(); }catch(e){ console.error('Firebase init failed', e); }
+}
+
+let orders = LS.get('vhm_orders', {});     // {orderId:{user,fb,items:[...],importedAt}}
+let log = LS.get('vhm_scanlog', []);
+// drop anything older than KEEP_DAYS from this browser (Firestore copies are kept)
+(function prune(){
+  const cut=Date.now()-KEEP_DAYS*864e5, cutIso=new Date(cut+7*3600e3).toISOString();
+  Object.keys(orders).forEach(k=>{ if((orders[k].importedAt||Date.now())<cut) delete orders[k]; });
+  log=log.filter(x=>x.t>=cutIso);
+  LS.set('vhm_orders',orders); LS.set('vhm_scanlog',log);
+})();
+let cur = null;                            // {id, scanned:[n per item]}
+let muted = false;
+
+const $ = id => document.getElementById(id);
+const norm = s => (s==null?'':s).toString().trim().toUpperCase();
+const esc = s => (s==null?'':s).toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const localNow = () => new Date(Date.now()+7*3600e3).toISOString().replace('Z','');   // Cambodia time (UTC+7)
+const itemLabel = it => it.desc || [it.size,it.color].filter(Boolean).join(' ');
+
+/* ---------- sound ---------- */
+let actx;
+function tone(freq, dur, type='sine', when=0, vol=.35){
+  if(muted||!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type=type;o.frequency.value=freq;o.connect(g);g.connect(actx.destination);
+  const t=actx.currentTime+when; g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.start(t);o.stop(t+dur);
+}
+const sOk   = ()=>{tone(880,.12);tone(1320,.18,'sine',.1)};
+const sBad  = ()=>{tone(180,.25,'sawtooth');tone(150,.35,'sawtooth',.22,.45)};
+const sWarn = ()=>{tone(520,.15,'square',0,.2);tone(520,.15,'square',.2,.2)};
+const sDone = ()=>{tone(660,.1);tone(880,.1,'sine',.1);tone(1320,.25,'sine',.2)};
+
+/* ---------- UI ---------- */
+function setStatus(cls, big, small){
+  const s=$('status'); s.className=cls;
+  s.innerHTML = esc(big) + (small?'<small>'+small+'</small>':'');
+}
+
+function render(){
+  const t=$('items');
+  if(!cur){ t.innerHTML=''; $('orderinfo').textContent='No order scanned yet.'; return; }
+  const o=orders[cur.id];
+  $('orderinfo').innerHTML = `<b>#${esc(cur.id)}</b> · ${esc(o.fb||o.user)}${o.ship?' · '+esc(o.ship):''}`;
+  let h='<tr><th>Code</th><th>Item</th><th>Loc</th><th>Scanned</th></tr>';
+  o.items.forEach((it,i)=>{
+    const done=cur.scanned[i]>=it.qty;
+    h+=`<tr class="${done?'full':''}"><td><b>${esc(it.code)}</b>${it.stock?'<br><span class="mut">'+esc(it.stock)+'</span>':''}</td><td>${esc(itemLabel(it))}</td><td>${esc(it.loc)}</td><td>${cur.scanned[i]}/${it.qty}${done?' ✓':''}</td></tr>`;
+  });
+  t.innerHTML=h;
+}
+
+function renderLog(){
+  const today=localNow().slice(0,10);
+  const L=log.filter(x=>x.t.slice(0,10)===today);
+  const per={};
+  L.forEach(x=>{const k=x.staff||'(no name)'; per[k]=per[k]||{ok:0,bad:0}; per[k][x.ok?'ok':'bad']++;});
+  $('stats').innerHTML = Object.keys(per).map(k=>`${esc(k)}: <span class="pill">✓ ${per[k].ok}</span> <span class="pill" style="background:#5b1a1a">✗ ${per[k].bad}</span>`).join(' &nbsp; ') || 'No scans yet today.';
+  $('log').innerHTML='<tr><th>Time</th><th>Staff</th><th>Order</th><th>Scanned</th><th></th></tr>' +
+    L.slice(-12).reverse().map(x=>`<tr><td>${x.t.slice(11,16)}</td><td>${esc(x.staff)}</td><td>${esc(x.order)}</td><td>${esc(x.code)}</td><td>${x.ok?'✅':'❌'}</td></tr>`).join('');
+}
+
+function record(ok, code, extra){
+  const e={t:localNow(),staff:$('staff').value.trim(),order:cur?cur.id:'',code,ok,...(extra||{})};
+  log.push(e); if(log.length>40000) log=log.slice(-40000);
+  LS.set('vhm_scanlog',log); renderLog();
+  if(db) db.collection(LOG_COL).add({...e, ts:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+}
+
+/* ---------- scanning logic ---------- */
+async function findOrder(code){
+  if(orders[code]) return code;
+  const key=Object.keys(orders).find(k=>norm(k)===code);
+  if(key) return key;
+  if(db){
+    try{
+      const d=await db.collection(ORDERS_COL).doc(code).get();
+      if(d.exists){ orders[code]=d.data(); LS.set('vhm_orders',orders); return code; }
+    }catch(e){}
+  }
+  return null;
+}
+
+// Exact barcodes for an item: the stock code if it has one, else code (+size/color variants for hand-typed data)
+function exactKeys(it){
+  if(it.stock) return [norm(it.stock)];
+  const c=norm(it.code), s=norm(it.size), col=norm(it.color);
+  return [c, `${c}-${s}`, `${c}-${s}-${col}`, `${c}-${col}-${s}`, `${c}${s}`, `${c}${s}${col}`];
+}
+
+function expectedText(o){
+  const missing=o.items.map((it,i)=>({it,left:it.qty-cur.scanned[i]})).filter(x=>x.left>0);
+  return 'EXPECTED · ត្រូវយក: ' + missing.map(x=>`<b>${esc(x.it.stock||x.it.code)}</b> ${esc(itemLabel(x.it))}${x.it.loc?' 📍'+esc(x.it.loc):''}${x.left>1?' ×'+x.left:''}`).join(' &nbsp;|&nbsp; ');
+}
+function markExpected(o){
+  render(); const rows=$('items').querySelectorAll('tr');
+  o.items.forEach((it,i)=>{ if(cur.scanned[i]<it.qty) rows[i+1].classList.add('expect'); });
+}
+
+async function handleScan(raw){
+  const code=norm(raw); if(!code) return;
+
+  // A known order barcode starts (or restarts) that order
+  const oid=await findOrder(code);
+  if(oid && (!cur || cur.id!==oid)){
+    const o=orders[oid];
+    cur={id:oid,scanned:o.items.map(()=>0)};
+    render(); setStatus('', `Order #${oid}`, `${esc(o.fb||o.user)} · ${o.items.reduce((a,i)=>a+i.qty,0)} item(s) — scan each item`);
+    return;
+  }
+  if(!cur){ setStatus('bad','No order active','Scan the ORDER barcode first · ស្កេនកូដ Order ជាមុន'); sBad(); return; }
+
+  const o=orders[cur.id];
+  const open=i=>cur.scanned[i]<o.items[i].qty;
+
+  // 1) exact match on the stock code
+  let idx=o.items.findIndex((it,i)=>open(i) && exactKeys(it).includes(code));
+  if(idx>=0){
+    cur.scanned[idx]++; const it=o.items[idx];
+    record(true,code); render();
+    if(o.items.every((x,i)=>cur.scanned[i]>=x.qty)){
+      setStatus('done','ORDER COMPLETE ✓', `#${esc(cur.id)} — ready for packer · ប្រគល់ឲ្យអ្នកវេចខ្ចប់`); sDone();
+    } else {
+      setStatus('ok','✓ CORRECT', `${esc(it.stock||it.code)} · ${esc(itemLabel(it))}${it.loc?' · 📍 '+esc(it.loc):''}`); sOk();
+    }
+    return;
+  }
+
+  // 2) product code only (no size/color in the barcode): accept only if it can't be confused with another line
+  const loose=o.items.map((it,i)=>i).filter(i=>open(i) && norm(o.items[i].code)===code);
+  if(loose.length===1){
+    idx=loose[0]; cur.scanned[idx]++; const it=o.items[idx];
+    record(true,code,{loose:true}); render();
+    setStatus('warn','✓ CODE OK · check size/color', `${esc(it.code)} should be <b>${esc(itemLabel(it))}</b> — barcode had no size/color`); sWarn();
+    return;
+  }
+  if(loose.length>1){
+    setStatus('warn','⚠ Scan the full stock code', `${esc(code)} appears on ${loose.length} lines of this order (different size/color)`); sWarn(); markExpected(o);
+    return;
+  }
+
+  // 3) mismatch
+  record(false,code); sBad();
+  const already=o.items.some(it=>exactKeys(it).includes(code) || norm(it.code)===code);
+  const sameProduct=o.items.some(it=>code.startsWith(norm(it.code)+'-'));
+  const head = already ? `Already scanned all of <b>${esc(code)}</b> for this order`
+             : sameProduct ? `<b>${esc(code)}</b> — right product, WRONG size/color`
+             : `Scanned: <b>${esc(code)}</b> — not in this order`;
+  setStatus('bad','✗ WRONG ITEM · ខុសទំនិញ', head + '<br>' + expectedText(o));
+  markExpected(o);
+}
+
+/* ---------- import ---------- */
+function parseCSV(text){
+  const rows=[]; let r=[],f='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'&&text[i+1]==='"'){f+='"';i++} else if(c==='"') q=false; else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===','||c==='\t'){r.push(f);f=''}
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; r.push(f);f=''; if(r.some(x=>x.trim()!=='')) rows.push(r); r=[]; }
+    else f+=c;
+  }
+  r.push(f); if(r.some(x=>x.trim()!=='')) rows.push(r);
+  return rows;
+}
+
+// header name (lower-case) -> field. Works for the Vrich export and for the simple CSV.
+const ALIASES = {
+  order:['order','order no.','order no','order_no'],
+  code:['code','product code'],
+  stock:['stock','stock_code','product stock code'],
+  desc:['desc','description'],
+  fb:['fb_name','facebook name'],
+  user:['username','customer name'],
+  ship:['courier'],
+  qty:['qty','quantity'],
+  size:['size'], color:['color','colour'], loc:['location','loc']
+};
+
+function ingest(rows){
+  rows=rows.filter(r=>r && r.some(x=>x!=null && String(x).trim()!==''));
+  if(rows.length<2){ alert('Need a header row + data rows.'); return; }
+  const head=rows[0].map(h=>String(h==null?'':h).trim().toLowerCase());
+  const col={}; for(const f in ALIASES){ col[f]=head.findIndex(h=>ALIASES[f].includes(h)); }
+  if(col.order<0||col.code<0){ alert('Header needs at least: Order No. and Product Code'); return; }
+  const get=(r,f)=>col[f]>=0 && r[col[f]]!=null ? String(r[col[f]]).trim() : '';
+  const batch={}; let lines=0;
+  rows.slice(1).forEach(r=>{
+    const id=get(r,'order'), code=get(r,'code'); if(!id||!code) return;
+    const o=batch[id]=batch[id]||{fb:get(r,'fb'),user:get(r,'user'),ship:get(r,'ship'),items:[],importedAt:Date.now()};
+    o.items.push({code,stock:get(r,'stock'),desc:get(r,'desc'),size:get(r,'size'),color:get(r,'color'),qty:parseInt(get(r,'qty'))||1,loc:get(r,'loc')});
+    lines++;
+  });
+  Object.assign(orders,batch); LS.set('vhm_orders',orders);
+  if(db) Object.keys(batch).forEach(id=>db.collection(ORDERS_COL).doc(id).set(batch[id]).catch(()=>{}));
+  updateCount();
+  const noStock=Object.values(batch).reduce((a,o)=>a+o.items.filter(i=>!i.stock).length,0);
+  setStatus('', `Loaded ${Object.keys(batch).length} order(s)`, `${lines} item line(s)${noStock?` · ⚠ ${noStock} line(s) without a stock code (matched by product code only)`:''} — scan an order barcode`);
+  $('scanbox').focus();
+}
+
+async function loadFile(f){
+  if(!f) return;
+  try{
+    if(/\.csv$/i.test(f.name)){ ingest(parseCSV(await f.text())); return; }
+    if(!window.XLSX){ alert('Could not load the Excel reader (no internet?). Use "paste CSV" instead.'); return; }
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    ingest(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}));
+  }catch(e){ alert('Could not read that file: '+e.message); }
+}
+const updateCount=()=>$('count').textContent=Object.keys(orders).length+' order(s) loaded';
+
+/* ---------- wiring ---------- */
+$('start').onclick=()=>{ actx=new (window.AudioContext||window.webkitAudioContext)(); $('overlay').remove(); $('scanbox').focus(); sOk(); };
+$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇':'🔊';$('scanbox').focus()};
+$('reset').onclick=()=>{cur=null;render();setStatus('','Ready · រង់ចាំស្កេន Order');$('scanbox').focus()};
+$('import').onclick=()=>{ ingest(parseCSV($('csv').value)); $('csv').value=''; };
+$('file').onchange=e=>{ loadFile(e.target.files[0]); e.target.value=''; };
+$('clear').onclick=()=>{ if(confirm('Delete all loaded orders from this browser?')){orders={};LS.set('vhm_orders',orders);cur=null;render();updateCount();} };
+$('staff').value=LS.get('vhm_staff','');
+$('staff').onchange=()=>LS.set('vhm_staff',$('staff').value);
+
+// the scanner types the code, then Enter
+$('scanbox').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ const v=e.target.value; e.target.value=''; handleScan(v); }
+});
+// keep focus on the scan box unless the user is typing elsewhere
+document.addEventListener('click',e=>{ if(!['TEXTAREA','INPUT','BUTTON','SUMMARY'].includes(e.target.tagName)) $('scanbox').focus(); });
+setInterval(()=>{ const a=document.activeElement; if(!a||a===document.body) $('scanbox').focus(); },1500);
+
+/* ---------- Firebase settings + history export ---------- */
+$('fbstate').textContent = db ? 'Firebase connected ('+FIREBASE_CONFIG.projectId+')' : 'this browser only (Firebase not connected)';
+$('fbsave').onclick=()=>{
+  const cfg=parseFirebaseConfig($('fbcfg').value);
+  if(!cfg){ alert('Could not find apiKey and projectId in what you pasted.'); return; }
+  LS.set('vhm_fbconfig',cfg); location.reload();
+};
+$('fboff').onclick=()=>{ try{localStorage.removeItem('vhm_fbconfig')}catch(e){}; location.reload(); };
+
+$('export').onclick=async()=>{
+  let rows=log;
+  if(db){
+    try{
+      const since=new Date(Date.now()-60*864e5);
+      const snap=await db.collection(LOG_COL).where('ts','>=',since).orderBy('ts').limit(50000).get();
+      rows=snap.docs.map(d=>d.data());
+    }catch(e){ alert('Could not read Firebase ('+e.message+'). Exporting this browser only.'); }
+  }
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const csv='time,staff,order,scanned,result,loose\n'+rows.map(x=>[x.t,x.staff,x.order,x.code,x.ok?'OK':'WRONG',x.loose?'code-only':''].map(q).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));
+  a.download='scan-history-'+localNow().slice(0,10)+'.csv'; a.click();
+};
+
+updateCount(); render(); renderLog();
+</script>
+</body>
+</html>
