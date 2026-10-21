@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="km">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1420">
+<title>VHM Scan</title>
+<!-- VHM Scan Verify 2.0 — the VH Shop Scan Verify 1.0 design, set up for VHM (project vhm-menu, collections sv2_*, storage prefix vhm2_).
+     Runs beside the old 13.1 app without touching its data (scan_*, vhm_* keys).
+     Catalog: read from Firestore (sv2_catalog, compressed chunks, verified by fingerprint), uploaded only by the manager page upload.html.
+     Removed: reconciliation workspace, barcode fixes, hand edits. Added: Hold, supervisor PIN approval, first-scan confirmation,
+     cancelled/changed order warnings, one scan-log document per order. -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1420;--card:#192032;--card2:#212a40;--line:#2c3654;--tx:#eef1f8;--mut:#93a0bf;--ok:#16a34a;--bad:#dc2626;--warn:#b45309;--dup:#7c3aed;--done:#0e7490;--acc:#4f8cff;--r:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 'Noto Sans Khmer',system-ui,-apple-system,sans-serif;min-height:100vh}
+button,input,textarea,select{font:inherit;color:var(--tx);font-size:16px}
+button{cursor:pointer;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:0 14px;min-height:46px}
+button:active{filter:brightness(1.25)}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+input,textarea,select{background:#0b101b;border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:46px}
+textarea{width:100%;min-height:90px;font-family:monospace;font-size:13px}
+.mut{color:var(--mut);font-size:13px}
+code{background:#0b101b;padding:1px 6px;border-radius:6px;font-size:13px}
+.top{position:sticky;top:0;z-index:5;background:rgba(15,20,32,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;display:flex;gap:8px;align-items:center}
+.top h1{font-size:16px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top select,.top input{width:130px;min-height:40px;padding:6px 10px}
+.top button{min-height:40px;padding:0 10px}
+.dot{width:10px;height:10px;border-radius:50%;background:#555;flex:none}.dot.on{background:#22c55e}.dot.bad{background:#ef4444}
+main{max-width:760px;margin:0 auto;padding:12px 12px calc(env(safe-area-inset-bottom) + 88px)}
+section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px;overflow-wrap:anywhere}
+.card h2{margin:0 0 8px;font-size:13px;letter-spacing:.04em;color:var(--mut);font-weight:700;text-transform:uppercase}
+.steps{display:flex;gap:8px;margin-bottom:10px}
+.steps span{flex:1;text-align:center;padding:6px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;color:var(--mut)}
+.steps span.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+.steps span.fin{background:#14532d;border-color:#16a34a;color:#bbf7d0}
+.scanrow{display:flex;gap:8px}
+#scanbox{flex:1;min-width:0;font-size:22px;border:2px solid var(--acc);border-radius:14px;padding:12px 14px}
+#kbd{min-width:54px;font-size:20px}
+#reader{display:none;margin:10px 0 0;border-radius:var(--r);overflow:hidden;background:#000}
+#reader video{width:100%!important}
+#status{margin-top:12px;border-radius:var(--r);padding:18px 14px;text-align:center;font-size:22px;font-weight:700;background:var(--card);border:2px solid var(--line);min-height:112px;display:flex;flex-direction:column;justify-content:center;gap:6px;word-break:break-word}
+#status small{font-size:15px;font-weight:400;opacity:.97;line-height:1.35}
+#status.ok{background:var(--ok);border-color:#4ade80}
+#status.bad{background:var(--bad);border-color:#fca5a5;animation:shake .35s}
+#status.warn{background:var(--warn);border-color:#fcd34d}
+#status.dup{background:var(--dup);border-color:#c4b5fd;animation:shake .35s}
+#status.done{background:var(--done);border-color:#67e8f9}
+#status.stop{background:#111;border-color:#ef4444;color:#fecaca}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.big{display:inline-block;margin:2px 0 6px;padding:6px 14px;border-radius:10px;background:rgba(0,0,0,.3);font-size:24px;font-weight:700;letter-spacing:.5px}
+#act{display:none;margin-top:12px;background:var(--card);border:2px solid #f59e0b;border-radius:var(--r);padding:12px}
+#act.on{display:block}
+#act h3{margin:0 0 6px;font-size:17px}
+#act .q{font-size:28px;font-weight:700;text-align:center;padding:10px;border-radius:12px;background:#0b101b;margin:8px 0}
+#act .two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+#act .two button{min-height:64px;font-size:20px;font-weight:700}
+#act .yes{background:var(--ok);border-color:#4ade80}#act .no{background:var(--bad);border-color:#fca5a5}
+#act input{width:100%;margin-top:6px;font-size:22px;text-align:center;letter-spacing:4px}
+#act .lines{display:grid;gap:6px;margin-top:8px}#act .lines button{text-align:left;padding:8px 12px}#act .lines button.sel{background:var(--acc);border-color:var(--acc)}
+.ohead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.ohead b{white-space:nowrap}.ohead .btns button{min-height:40px;padding:0 10px}
+.ohead b{font-size:18px}.ohead .btns{display:flex;gap:6px}
+.bar{height:8px;background:#0b101b;border-radius:99px;overflow:hidden;margin:8px 0 10px}
+.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .25s}
+.it{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px;margin-top:8px;background:var(--card2)}
+.it .l{min-width:78px}.it .l b{display:block;font-size:17px}.it .m{flex:1;min-width:0}
+.it .r{font-weight:700;white-space:nowrap;font-size:17px}
+.it.done{border-color:#16a34a;background:#0f2a1c}.it.done .r{color:#4ade80}
+.it.expect{border-color:var(--bad);background:#3a1a1f}
+.loc{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:#0b101b;font-size:13px;color:var(--mut)}
+.warnbox{border:1px solid #ef4444;background:rgba(239,68,68,.12);border-radius:10px;padding:8px;margin:8px 0;font-size:14px}
+.iss{border:1px solid var(--line);border-left-width:6px;border-radius:12px;padding:10px 12px;margin-top:10px;background:var(--card2)}
+.iss.wrong{border-left-color:var(--bad)}.iss.dup{border-left-color:var(--dup)}.iss.check{border-left-color:#f59e0b}.iss.incomplete{border-left-color:#f97316}
+.iss.cleared{opacity:.65}
+.iss .h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;background:#0b101b}
+.iss.wrong .tag{color:#fca5a5}.iss.dup .tag{color:#c4b5fd}.iss.check .tag{color:#fcd34d}.iss.incomplete .tag{color:#fdba74}
+.iss .b{font-size:17px;font-weight:700;margin-top:4px;word-break:break-word}
+.iss .e{margin-top:4px;font-size:14px;color:#fde68a}
+.iss .how{margin-top:6px;font-size:14px;color:#cbd5e1}.iss .disp{margin-top:6px;padding:6px 10px;border-radius:10px;background:#3b2f0b;color:#fde68a;font-weight:700}
+.iss.short,.iss.shortreq{border-left-color:#0ea5e9}.iss.shortreq .tag{color:#7dd3fc}.iss.short .tag{color:#7dd3fc}
+.iss .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.iss .btns button{min-height:42px}
+#act .reasons{display:grid;gap:6px;margin-top:8px}#act .reasons button{text-align:left;padding:8px 12px}#act .reasons button.sel{background:var(--acc);border-color:var(--acc)}
+.iss .ready{margin-top:6px;padding:6px 10px;border-radius:10px;background:#14532d;color:#bbf7d0;font-weight:700}
+.iss .a{display:flex;gap:8px;margin-top:10px}.iss .a input{flex:1;min-width:0}
+.iss .a button{background:#14532d;border-color:#16a34a;font-weight:700;min-width:96px}
+.chips{display:flex;gap:8px;margin-bottom:6px}.chips button{flex:1}
+.chips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.rw{padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-top:8px;background:var(--card2);word-break:break-word}.rw b{font-size:16px}
+.rw.tap{cursor:pointer}
+.st{font-size:12px;font-weight:700;padding:1px 8px;border-radius:99px;background:#334155;margin-left:6px}.st.c{background:#7f1d1d}
+.badge{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:12px;font-weight:700;margin-left:4px}
+.badge:empty,.badge[data-n="0"]{display:none}
+.staffrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;background:var(--line);font-size:13px;margin-left:4px}
+.lg{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.lg .t{color:var(--mut);width:44px;flex:none}.lg .c{flex:1;min-width:0;word-break:break-all}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.catchip{display:inline-block;font-size:12px;margin:0 0 8px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mut);max-width:100%;overflow-wrap:anywhere}
+.catchip.ok{color:#86efac;border-color:#166534}.catchip.warn{color:#fcd34d;border-color:#92400e}.catchip.bad{color:#fca5a5;border-color:#991b1b}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:rgba(15,20,32,.97);border-top:1px solid var(--line);display:flex;padding:6px 8px calc(env(safe-area-inset-bottom) + 6px);gap:6px}
+nav button{flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;border-radius:12px;background:transparent;border-color:transparent;color:var(--mut)}
+nav button b{font-size:20px;line-height:1}
+nav button.on{background:var(--card2);color:var(--tx);border-color:var(--line)}
+#overlay{position:fixed;inset:0;background:rgba(5,8,14,.94);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px}
+#overlay .box{width:100%;max-width:360px;text-align:center;display:grid;gap:12px}
+#overlay h2{margin:0;font-size:20px}
+#overlay input,#overlay select{width:100%;font-size:18px;text-align:center}
+#overlay button{min-height:56px;font-size:20px}
+</style>
+</head>
+<body>
+<div id="overlay"><div class="box">
+  <h2>VHM Scan Verify<br><span class="mut">ពិនិត្យទំនិញមុនវេចខ្ចប់</span></h2>
+  <select id="ovpick" class="hide" style="display:none"></select>
+  <input id="ovstaff" placeholder="ឈ្មោះបុគ្គលិក / Your name" autocomplete="name">
+  <button class="pri" id="start">ចាប់ផ្តើម · Start</button>
+  <div id="ovmsg" class="mut"></div>
+</div></div>
+
+<div class="top">
+  <span id="dot" class="dot" title="online storage"></span>
+  <h1>VHM Scan</h1>
+  <input id="staff" placeholder="Name" aria-label="Staff name">
+  <button id="cam">📷</button>
+  <button id="mute">🔊</button>
+</div>
+
+<main>
+  <!-- ============ SCAN ============ -->
+  <section id="tab-scan" class="on">
+    <div class="steps"><span id="s1" class="on">① Scan order # · ស្កេនលេខ Order</span><span id="s2">② Scan items · ស្កេនទំនិញ</span></div>
+    <div id="catchip" class="catchip">📦 Catalog: loading…</div>
+    <div class="scanrow">
+      <input id="scanbox" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Order number or item code">
+      <button id="kbd" title="Show / hide the keyboard">⌨</button>
+    </div>
+    <div id="reader"></div>
+    <div id="status">Ready · រង់ចាំស្កេន Order</div>
+    <div id="act"></div>
+    <div class="card" id="ordercard" style="display:none">
+      <div class="ohead"><b id="ordertitle"></b><span class="btns"><button id="shipshort" style="display:none">📦 Ship short</button><button id="hold">⏸ Hold</button><button id="reset">Next ⟲</button></span></div>
+      <div class="mut" id="ordersub"></div>
+      <div class="bar"><i id="barfill"></i></div>
+      <div id="items"></div>
+    </div>
+    <div class="card" id="orderissues" style="display:none">
+      <h2>⚠ To clear for this order</h2>
+      <div id="orderissuelist"></div>
+    </div>
+  </section>
+
+  <!-- ============ ISSUES ============ -->
+  <section id="tab-issues">
+    <div class="card">
+      <h2>Issues · បញ្ហាត្រូវដោះស្រាយ</h2><div class="mut" style="margin-bottom:8px">Issues close by themselves when the order is scanned complete. Only a supervisor can close one any other way.</div>
+      <div class="chips"><button id="f-open" class="on">Open</button><button id="f-done">Closed</button></div>
+      <div id="issuelist"></div>
+      <div class="row"><button id="issrefresh">↻ Refresh</button><span id="issinfo" class="mut"></span></div>
+    </div>
+  </section>
+
+  <!-- ============ LISTS (read only) ============ -->
+  <section id="tab-lists">
+    <div class="card">
+      <div class="chips"><button id="lm-ord" class="on">Orders</button><button id="lm-pok">PokPok items</button></div>
+      <div id="ldays" class="chips"></div>
+      <input id="lq" placeholder="Search order #, customer, code, colour, size…" style="width:100%" autocomplete="off">
+      <div class="row"><span id="lcount" class="mut"></span></div>
+      <div id="lresults"></div>
+      <div class="mut" style="margin-top:10px">Read only. Wrong data is fixed in PokPok or Vrich, then the manager uploads it again.</div>
+    </div>
+  </section>
+
+  <!-- ============ LOG ============ -->
+  <section id="tab-log">
+    <div class="card"><h2>Today on this device · ថ្ងៃនេះ</h2><div id="stats"></div></div>
+    <div class="card"><h2>Recent scans</h2><div id="log"></div>
+      <div class="row"><button id="export">⬇ Scans on this device (CSV)</button><button id="exportiss">⬇ Issues (CSV)</button></div>
+      <div class="mut" id="qinfo" style="margin-top:6px"></div>
+    </div>
+  </section>
+
+  <!-- ============ DATA ============ -->
+  <section id="tab-data">
+    <div class="card">
+      <h2>Product catalog</h2>
+      <div id="catinfo" class="mut"></div>
+      <div class="row"><button class="pri" id="catreload">↻ Check now</button><span id="catmsg" class="mut"></span></div>
+      <div class="mut" style="margin-top:8px">The manager uploads the PokPok list, Vrich stock and Vrich orders on the upload page. This phone downloads the catalog by itself when it changes and keeps the last good copy, so scanning keeps working if Wi-Fi drops.</div>
+    </div>
+    <div class="card">
+      <h2>This device</h2>
+      <div class="mut"><b id="fbstate"></b></div>
+      <div class="mut" id="devinfo" style="margin-top:6px"></div>
+      <div class="row"><button id="clear">Clear saved orders on this device</button></div>
+      <details style="margin-top:10px"><summary class="mut" style="cursor:pointer">Use a different Firebase project</summary>
+        <textarea id="fbcfg" placeholder='const firebaseConfig = { apiKey: "...", projectId: "..." };'></textarea>
+        <div class="row"><button id="fbsave">Save &amp; connect</button><button id="fboff">Back to built-in</button></div>
+      </details>
+      <div class="mut" style="margin-top:10px">VHM Scan Verify 2.0</div>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="scan" class="on"><b>📦</b>Scan</button>
+  <button data-tab="issues"><b>⚠</b>Issues<span id="badge" class="badge" data-n="0"></span></button>
+  <button data-tab="lists"><b>🔎</b>Lists</button>
+  <button data-tab="log"><b>📋</b>Log</button>
+  <button data-tab="data"><b>⚙</b>Data</button>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ===== VHS core: shared by index.html (staff phones) and upload.html (manager). Identical copy in both files. ===== */
+const VHS = (function () {
+  'use strict';
+  const C = {};
+  C.APP = 'VHM Scan Verify';
+  C.P = 'vhm2_';                                  // localStorage prefix (never vhm_: those keys belong to the old 13.1 app)
+  C.IDB = 'vhm2_scan';
+  C.COL = { orders: 'sv2_orders', idx: 'sv2_orders_idx', log: 'sv2_log', issues: 'sv2_issues', ovr: 'sv2_overrides', cat: 'sv2_catalog', meta: 'sv2_meta' };
+  C.KEEP_DAYS = 35;
+  C.SHRINK = 0.5;                                 // an upload that loses more than 50% of the items is blocked
+  C.CHUNK = 900000;                               // bytes per catalog chunk document (Firestore limit is 1 MiB)
+  C.TZ_MS = 7 * 3600e3;                           // Cambodia, UTC+7
+
+  /* ---------- text ---------- */
+  const INVIS = /[​⁠﻿­]/g;
+  C.clean = s => (s == null ? '' : String(s)).replace(INVIS, '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  C.nz = s => C.clean(s).toUpperCase();
+  C.toks = s => new Set(C.nz(s).split(/[\s-]+/).filter(Boolean));
+  C.esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // sale code = leading letters/digits of the PokPok name ("E339​អាវ", "N460 អាវ")
+  C.saleOf = name => { const nm = C.nz(name), m = nm.match(/^[A-Z0-9][A-Z0-9_.-]*/), sale = m ? m[0] : (nm.split(' ')[0] || ''); return { sale, rest: nm.slice(sale.length).trim() }; };
+  C.localNow = () => new Date(Date.now() + C.TZ_MS).toISOString().replace('Z', '');      // "YYYY-MM-DDTHH:MM:SS.mmm" Cambodia time
+  C.today = () => C.localNow().slice(0, 10);
+  C.dayShift = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+  C.when = iso => (iso || '').slice(0, 16).replace('T', ' ');
+  C.LS = {
+    get(k, d) { try { const v = localStorage.getItem(C.P + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(C.P + k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+    del(k) { try { localStorage.removeItem(C.P + k); } catch (e) {} }
+  };
+  C.idb = {
+    open() { return new Promise((res, rej) => { const r = indexedDB.open(C.IDB, 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+    async get(k) { try { const d = await this.open(); return await new Promise(res => { const q = d.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch (e) { return undefined; } },
+    async set(k, v) { try { const d = await this.open(); return await new Promise(res => { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(true); t.onerror = () => res(false); }); } catch (e) { return false; } }
+  };
+
+  /* ---------- SHA-256 (plain JS, works without a secure context) ---------- */
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  C.sha256 = function (str) {
+    const msg = new TextEncoder().encode(str), l = msg.length, nb = Math.ceil((l + 9) / 64) * 64, buf = new Uint8Array(nb);
+    buf.set(msg); buf[l] = 0x80;
+    const dv = new DataView(buf.buffer); dv.setUint32(nb - 8, Math.floor((l * 8) / 4294967296)); dv.setUint32(nb - 4, (l * 8) >>> 0);
+    const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19], w = new Uint32Array(64), rr = (x, n) => (x >>> n) | (x << (32 - n));
+    for (let o = 0; o < nb; o += 64) {
+      for (let i = 0; i < 16; i++) w[i] = dv.getUint32(o + i * 4);
+      for (let i = 16; i < 64; i++) { const s0 = rr(w[i-15],7) ^ rr(w[i-15],18) ^ (w[i-15] >>> 3), s1 = rr(w[i-2],17) ^ rr(w[i-2],19) ^ (w[i-2] >>> 10); w[i] = (w[i-16] + s0 + w[i-7] + s1) >>> 0; }
+      let [a,b,c,d,e,f,g,h] = H;
+      for (let i = 0; i < 64; i++) { const S1 = rr(e,6) ^ rr(e,11) ^ rr(e,25), ch = (e & f) ^ (~e & g), t1 = (h + S1 + ch + K[i] + w[i]) >>> 0, S0 = rr(a,2) ^ rr(a,13) ^ rr(a,22), mj = (a & b) ^ (a & c) ^ (b & c), t2 = (S0 + mj) >>> 0; h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0; }
+      H[0]=(H[0]+a)>>>0; H[1]=(H[1]+b)>>>0; H[2]=(H[2]+c)>>>0; H[3]=(H[3]+d)>>>0; H[4]=(H[4]+e)>>>0; H[5]=(H[5]+f)>>>0; H[6]=(H[6]+g)>>>0; H[7]=(H[7]+h)>>>0;
+    }
+    return H.map(x => x.toString(16).padStart(8, '0')).join('');
+  };
+  C.quick = s => { let h1 = 0x811c9dc5, h2 = 0x9747b28c; s = String(s); for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 ^ c, 0x5bd1e995); h2 ^= h2 >>> 15; } return (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36); };
+  C.pinHash = (pin, salt) => C.sha256('vhm2-pin|' + salt + '|' + String(pin).trim());
+
+  /* ---------- catalogs: compressed, split into chunk documents, verified by fingerprint ----------
+   * PokPok record: [code, barcode, name, attrs, qty]      Vrich record: [saleCode, stockCode, desc, size, color, qty]   */
+  C.KINDS = { pok: 'PokPok product list', vrich: 'Vrich stock' };
+  C.fingerprint = recs => C.sha256(JSON.stringify(recs));
+  C.pack = obj => window.pako.gzip(new TextEncoder().encode(JSON.stringify(obj)));
+  C.unpack = u8 => JSON.parse(new TextDecoder().decode(window.pako.ungzip(u8)));
+  C.split = (u8, size) => { const out = []; size = size || C.CHUNK; for (let i = 0; i < u8.length; i += size) out.push(u8.slice(i, i + size)); return out.length ? out : [new Uint8Array(0)]; };
+  C.join = parts => { const n = parts.reduce((a, p) => a + p.length, 0), u = new Uint8Array(n); let o = 0; parts.forEach(p => { u.set(p, o); o += p.length; }); return u; };
+  C.partId = (kind, ver, i) => kind + '_' + ver + '_' + i;
+  C.checkCatalog = (obj, info) => {          // a downloaded catalog is used only if it is complete and unchanged
+    if (!obj || !Array.isArray(obj.records)) return 'The catalog data is damaged.';
+    if (info && obj.ver !== info.ver) return 'Catalog parts are from different uploads — try again in a minute.';
+    if (obj.records.length !== obj.count) return 'The catalog is incomplete (' + obj.records.length + ' of ' + obj.count + ' items).';
+    if (C.fingerprint(obj.records) !== obj.fp) return 'The catalog fingerprint does not match — the data was damaged.';
+    return '';
+  };
+  // read the catalog the meta document points to: n reads (one per chunk)
+  C.downloadCatalog = async (store, kind, info) => {
+    const parts = [];
+    for (let i = 0; i < info.parts; i++) { const d = await store.get(C.COL.cat, C.partId(kind, info.ver, i)); if (!d || d.ver !== info.ver) throw new Error('Catalog part ' + (i + 1) + ' of ' + info.parts + ' is missing (a newer upload may be in progress).'); parts.push(store.bytes(d.data)); }
+    const obj = C.unpack(C.join(parts)), bad = C.checkCatalog(obj, info);
+    if (bad) throw new Error(bad);
+    return obj;
+  };
+
+  /* ---------- PokPok index + matching (same rules as Scan Verify 13) ---------- */
+  C.pokInfo = r => { const [code, bar, name, attrs] = r, { sale, rest } = C.saleOf(name); return { code, bar, sale, rest: C.toks(rest), attrs: C.toks(attrs), label: (sale + ' ' + rest + ' ' + C.nz(attrs).replace(/-/g, ' ')).replace(/\s+/g, ' ').trim() }; };
+  // barcode/code -> info. An item's own Code wins over another item's Barcode; a barcode shared by several products is never auto-matched.
+  C.buildPok = recs => {
+    const pok = new Map(), late = new Map(), seen = new Map();
+    recs.forEach(r => {
+      const info = C.pokInfo(r), k = C.nz(r[0]);
+      if (k) { seen.set(k, (seen.get(k) || 0) + 1); pok.set(k, info); }
+      if (r[1]) { const b = C.nz(r[1]); (late.get(b) || late.set(b, []).get(b)).push(info); }
+    });
+    seen.forEach((n, k) => { if (n > 1) { const i = pok.get(k); i.noAuto = true; i.flagWhy = 'code ' + k + ' is on ' + n + ' catalog rows'; } });
+    late.forEach((list, k) => {
+      if (pok.has(k)) return;
+      const codes = [...new Set(list.map(i => C.nz(i.code)))];
+      if (codes.length === 1) pok.set(k, list[0]);
+      else pok.set(k, { code: k, sale: '', rest: new Set(), attrs: new Set(), label: '', ambiguous: true, noAuto: true, cands: list.slice(0, 6), flagWhy: 'barcode ' + k + ' is on ' + codes.length + ' products (' + codes.slice(0, 4).join(', ') + (codes.length > 4 ? ' …' : '') + ')' });
+    });
+    return pok;
+  };
+  C.itemLabel = it => it.desc || [it.size, it.color].filter(Boolean).join(' ');
+  // PokPok forces a Size on every item ("-1 -កាហ្វេ", "-5 -ដី") even when the product has none. A number in the PokPok
+  // attributes therefore only has to match when the Vrich description itself contains a number (real sizes such as 38, 39).
+  const isNum = t => /^\d+$/.test(t);
+  C.fits = (info, it) => { const D = C.toks(C.itemLabel(it)), dNum = [...D].some(isNum); return [...info.attrs].every(t => D.has(t) || (!dNum && isNum(t))); };
+  // can a PokPok label be scanned for this order line?   ok | nosale | words | flagged
+  C.bySale = recs => { const m = new Map(); recs.forEach(r => { const info = C.pokInfo(r); if (!info.sale) return; (m.get(info.sale) || m.set(info.sale, []).get(info.sale)).push(info); }); return m; };
+  C.lineState = (bySale, dupCodes, it) => {
+    const cand = bySale.get(C.nz(it.code)) || [];
+    if (!cand.length) return { st: 'nosale', cand };
+    const fit = cand.filter(i => C.fits(i, it));
+    if (!fit.length) return { st: 'words', cand };
+    if (fit.every(i => dupCodes && dupCodes.has(C.nz(i.code)))) return { st: 'flagged', cand };
+    return { st: 'ok', cand, fit };
+  };
+  C.LINE_TXT = {
+    ok: 'Scans OK',
+    nosale: 'No PokPok item has this sale code',
+    words: 'Sale code is in PokPok, but no item has these colour/size words',
+    flagged: 'Only PokPok items with a conflicting code fit'
+  };
+  C.LINE_FIX = {
+    nosale: 'PokPok: create the item (first word of the name = sale code) and print labels — or Vrich: fix the sale code if it is a typo',
+    words: 'Make the colour/size words the same in both systems (Vrich names are the standard) — or PokPok: add the missing colour/size',
+    flagged: 'PokPok: remove the duplicate product code'
+  };
+
+  /* ---------- manager links: PokPok item code -> Vrich stock code (when the words cannot match) ----------
+   * stored as one text field in sv2_meta/links: "P0017955\tG22-7117\tby\tat" per line */
+  C.linksParse = txt => { const m = new Map(); String(txt || '').split('\n').forEach(l => { const [pok, stock, by, at] = l.split('\t'); if (pok && stock) m.set(C.nz(pok), { pok, stock, by: by || '', at: at || '' }); }); return m; };
+  C.linksText = m => [...m.values()].map(x => [x.pok, x.stock, x.by || '', x.at || ''].join('\t')).join('\n');
+  C.linkedStocks = m => new Set([...m.values()].map(x => C.nz(x.stock)));
+
+  /* ---------- orders ---------- */
+  // daily order index entry, stored as ONE text value per order: Firestore indexes every map field and allows at most
+  // 40,000 index entries per document, so 4,000+ orders × 5 fields would be refused ("invalid-argument")
+  C.idxEnc = e => [e.s || '', String(e.f || '').replace(/[|\n]/g, ' ').slice(0, 40), e.n || 0, e.st || 'a', e.r || 1].join('|');
+  C.idxDec = v => { if (v && typeof v === 'object') return v; const p = String(v || '').split('|'); return { s: p[0], f: p[1] || '', n: +p[2] || 0, st: p[3] || 'a', r: +p[4] || 1 }; };
+  C.idxMap = o => { const m = {}; Object.keys(o || {}).forEach(id => { m[id] = C.idxDec(o[id]); }); return m; };
+  C.orderSig = o => C.quick(JSON.stringify([o.fb || '', o.items.map(i => [i.code, i.stock, i.desc, i.qty])]));
+
+  /* ---------- storage: Firebase (real) or the test double (window.__TEST_STORE) ---------- */
+  C.parseConfig = text => { const cfg = {}; const re = /["']?(\w+)["']?\s*:\s*["']([^"']*)["']/g; let m; while ((m = re.exec(text))) cfg[m[1]] = m[2]; return cfg.apiKey && cfg.projectId ? cfg : null; };
+  C.makeStore = cfg => {
+    if (window.__TEST_STORE) return window.__TEST_STORE;
+    if (!cfg || !cfg.apiKey || /PASTE|YOUR_/i.test(cfg.apiKey) || !window.firebase) return null;
+    firebase.initializeApp(cfg);
+    const fs = firebase.firestore(), au = firebase.auth(), F = firebase.firestore;
+    const ref = (c, id) => fs.collection(c).doc(id);
+    const S = { kind: 'firebase', projectId: cfg.projectId, reads: 0, writes: 0 };
+    S.auth = {
+      onChange: cb => au.onAuthStateChanged(u => cb(u ? { uid: u.uid, email: u.email || '', anon: u.isAnonymous } : null)),
+      anon: () => au.signInAnonymously(),
+      email: (e, p) => au.signInWithEmailAndPassword(e, p),
+      out: () => au.signOut()
+    };
+    S.get = async (c, id) => { const s = await ref(c, id).get(); S.reads++; return s.exists ? s.data() : null; };
+    S.set = async (c, id, d, merge) => { await ref(c, id).set(d, merge ? { merge: true } : {}); S.writes++; };
+    S.update = async (c, id, d) => { await ref(c, id).update(d); S.writes++; };
+    S.del = async (c, id) => { await ref(c, id).delete(); S.writes++; };
+    S.query = async (c, wheres, opt) => { let q = fs.collection(c); (wheres || []).forEach(w => { q = q.where(w[0], w[1], w[2]); }); if (opt && opt.limit) q = q.limit(opt.limit); const s = await q.get(); S.reads += Math.max(1, s.size); return s.docs.map(d => ({ id: d.id, data: d.data() })); };
+    S.batch = async ops => { for (let i = 0; i < ops.length; i += 400) { const b = fs.batch(); ops.slice(i, i + 400).forEach(o => { const r = ref(o.col, o.id); if (o.op === 'del') b.delete(r); else if (o.op === 'update') b.update(r, o.data); else b.set(r, o.data, o.merge ? { merge: true } : {}); }); await b.commit(); S.writes += Math.min(400, ops.length - i); } };
+    S.watch = (c, id, cb) => ref(c, id).onSnapshot(s => { S.reads++; cb(s.exists ? s.data() : null); }, e => cb(undefined, e));
+    // live query: Firestore bills the first result and then only the documents that change
+    S.watchQuery = (c, wheres, cb) => { let q = fs.collection(c); (wheres || []).forEach(w => { q = q.where(w[0], w[1], w[2]); }); return q.onSnapshot(s => { S.reads += Math.max(1, s.docChanges().length); cb(s.docs.map(d => ({ id: d.id, data: d.data() }))); }, e => cb(undefined, e)); };
+    S.blob = u8 => F.Blob.fromUint8Array(u8);
+    S.bytes = b => b.toUint8Array();
+    S.delField = () => F.FieldValue.delete();
+    return S;
+  };
+  return C;
+})();
+window.VHS = VHS;
+
+</script>
+<script>
+'use strict';
+/* ---------- VHM Firebase project (vhm-menu, same block as in upload.html; data lives in the sv2_* collections) ---------- */
+const BUILT_IN_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCzA--FJTKl74TI0FRhDNGurnOimZjgja0",
+  authDomain: "vhm-menu.firebaseapp.com",
+  projectId: "vhm-menu",
+  storageBucket: "vhm-menu.firebasestorage.app",
+  messagingSenderId: "728781560326",
+  appId: "1:728781560326:web:4f88ffa992cb6175f40187"
+};
+const V = VHS, COL = V.COL, LS = V.LS, $ = id => document.getElementById(id), esc = V.esc, nz = V.nz, norm = V.nz, toks = V.toks;
+const KEEP_DAYS = V.KEEP_DAYS, localNow = V.localNow, itemLabel = V.itemLabel;
+const tms = t => new Date(t + 'Z').getTime() - V.TZ_MS;
+const plain = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.replace(/\s+/g, ' ').trim(); };
+const staffName = () => $('staff').value.trim() || '(no name)';
+const DEVICE = LS.get('device', null) || (() => { const d = Math.random().toString(36).slice(2, 7); LS.set('device', d); return d; })();
+
+/* ---------- storage ---------- */
+const CFG = LS.get('fbconfig', null) || BUILT_IN_FIREBASE_CONFIG;
+let store = null; try { store = V.makeStore(CFG); } catch (e) { console.error('Firebase init failed', e); }
+let online = false, authErr = '';
+let readyResolve; const authReady = new Promise(r => { readyResolve = r; });
+if (store) {
+  store.auth.onChange(u => { online = !!u; $('dot').className = 'dot ' + (u ? 'on' : 'bad'); if (u) readyResolve(true); });
+  store.auth.anon().catch(e => { authErr = e.code || e.message; $('dot').className = 'dot bad'; readyResolve(false); fbState(); });
+} else readyResolve(false);
+setTimeout(() => readyResolve(false), 8000);
+function fbState() { $('fbstate').textContent = !store ? 'Not connected — no Firebase project set (scanning works only with orders already saved on this phone).' : online ? 'Online storage connected (' + (store.projectId || 'test') + ')' : 'Not signed in to Firebase' + (authErr ? ': ' + authErr + ' — is Anonymous sign-in turned on?' : ''); }
+
+/* ---------- local state ---------- */
+let orders = LS.get('orders', {});     // orders opened on this device: {id:{d,fb,user,ship,items,st,rev,changedAt,fetchedAt}}
+let log = LS.get('scanlog', []);       // this device's scans (for the Log tab)
+let issues = LS.get('issues', []);
+let logq = LS.get('logq', {});         // scan-session documents not yet saved online
+(function prune() {
+  const cut = Date.now() - KEEP_DAYS * 864e5, cutIso = new Date(cut + V.TZ_MS).toISOString(), ocut = Date.now() - 3 * 864e5;
+  Object.keys(orders).forEach(k => { if ((orders[k].fetchedAt || 0) < ocut) delete orders[k]; });
+  log = log.filter(x => x.t >= cutIso).slice(-30000);
+  issues = issues.filter(i => i.status === 'open' || i.t >= cutIso);
+  LS.set('orders', orders); LS.set('scanlog', log); LS.set('issues', issues);
+})();
+let cur = null;       // {id, scanned:[n per line]}
+let sess = null;      // the scan-log document of the order being scanned
+let muted = false;
+let SETTINGS = { staff: [], sup: [] };
+
+/* ---------- sound ---------- */
+let actx;
+function tone(freq, dur, type = 'sine', when = 0, vol = .35) {
+  if (muted || !actx) return;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = freq; o.connect(g); g.connect(actx.destination);
+  const t = actx.currentTime + when; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  o.start(t); o.stop(t + dur);
+}
+const sOk = () => { tone(880, .12); tone(1320, .18, 'sine', .1); };
+const sBad = () => { tone(180, .25, 'sawtooth'); tone(150, .35, 'sawtooth', .22, .45); };
+const sWarn = () => { tone(520, .15, 'square', 0, .2); tone(520, .15, 'square', .2, .2); };
+const sDup = () => { [0, .18, .36].forEach(t => tone(740, .12, 'square', t, .3)); };
+const sDone = () => { tone(660, .1); tone(880, .1, 'sine', .1); tone(1320, .25, 'sine', .2); };
+const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+/* ---------- tabs ---------- */
+function showTab(n) {
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === 'tab-' + n));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === n));
+  if (n === 'issues') syncIssues(issueFilter === 'done');
+  if (n === 'scan') focusScan();
+  if (n === 'lists') renderLists();
+  if (n === 'log') renderLog();
+  if (n === 'data') renderData();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+/* ---------- status + order view ---------- */
+function setStatus(cls, big, small) { const s = $('status'); s.className = cls; s.innerHTML = esc(big) + (small ? '<small>' + small + '</small>' : ''); }
+function render(expect) {
+  const has = !!cur; $('ordercard').style.display = has ? 'block' : 'none';
+  $('s1').className = has ? 'fin' : 'on'; $('s2').className = has ? 'on' : '';
+  if (!has) { $('items').innerHTML = ''; renderOrderIssues(); return; }
+  const o = orders[cur.id];
+  const total = o.items.reduce((a, i) => a + i.qty, 0), got = o.items.reduce((a, it, i) => a + Math.min(cur.scanned[i], it.qty), 0);
+  $('ordertitle').textContent = '#' + cur.id;
+  $('shipshort').style.display = !orderDone() ? '' : 'none';
+  $('ordersub').textContent = [o.fb || o.user, o.ship].filter(Boolean).join(' · ') + '  —  ' + got + '/' + total + ' items';
+  $('barfill').style.width = (total ? got / total * 100 : 0) + '%';
+  $('items').innerHTML = o.items.map((it, i) => {
+    const done = cur.scanned[i] >= it.qty;
+    return `<div class="it ${done ? 'done' : ''} ${expect && !done ? 'expect' : ''}"><div class="l"><b>${esc(it.code)}</b>${it.stock ? '<span class="mut">' + esc(it.stock) + '</span>' : ''}</div>` +
+      `<div class="m">${esc(itemLabel(it))}${it.loc ? '<span class="loc">📍' + esc(it.loc) + '</span>' : ''}</div><div class="r">${cur.scanned[i]}/${it.qty}${done ? ' ✓' : ''}</div></div>`;
+  }).join('');
+  renderOrderIssues();
+}
+
+/* ---------- issues (to clear) ---------- */
+let issueFilter = 'open';
+const openIssues = () => issues.filter(i => i.status === 'open');
+const nowKnown = is => is.type === 'wrong' && !is.label && pok.has(nz(is.code)) && pok.get(nz(is.code)).label;
+const ISS_TAG = { shortreq: '⏳ SHIP SHORT — WAITING FOR MANAGER', dup: '🔁 DUPLICATE', check: '⚠ CHECK', incomplete: '⏸ MISSING / ON HOLD', short: '📦 SHIPPED SHORT' };
+const ISS_HOW = { shortreq: 'The manager approves or rejects it on the manager page', wrong: 'Open the order and scan the right item until it is complete', dup: 'Take the extra item out and finish the order', check: 'Check the item by eye and finish the order', incomplete: 'Find the missing item and finish the order — or ask a supervisor (ship short)', short: 'The manager fixes this order in Vrich' };
+const RES_TXT = { rejected: 'ship short rejected', completed: 'order completed', short: 'shipped short', mistake: 'mistake scan', other: 'other', approved: 'item approved', logged: 'logged after the order was complete', catalog: 'manager: catalog problem', staff: 'manager: staff mistake', vrich: 'fixed in Vrich' };
+function issueCard(is) {
+  const tag = is.type === 'wrong' ? (is.label ? '✗ WRONG ITEM' : '? NOT IN CATALOG') : (ISS_TAG[is.type] || is.type), cleared = is.status === 'cleared', k = nowKnown(is);
+  return `<div class="iss ${is.type} ${cleared ? 'cleared' : ''}" data-id="${esc(is.id)}" data-order="${esc(is.order)}"><div class="h"><span class="tag">${tag}</span><b>#${esc(is.order)}</b>` +
+    `<span class="mut">${esc(is.t.slice(5, 16).replace('T', ' '))} · ${esc(is.staff || '—')}${is.count > 1 ? ' · ×' + is.count : ''}</span></div>` +
+    `<div class="b">${esc(is.label || is.code)}${is.label && is.type !== 'incomplete' && is.type !== 'short' ? ` <span class="mut">(${esc(is.code)})</span>` : ''}</div>` +
+    `<div class="mut">${esc(is.reason)}</div>${is.expected ? `<div class="e">${esc(is.expected)}</div>` : ''}` +
+    (!cleared && k ? `<div class="ready">✓ Now in the catalog (${esc(k)}) — rescan order #${esc(is.order)}</div>` : '') +
+    (is.disputed ? `<div class="disp">⚖ ${esc(is.disputeBy || '')} says the system is wrong — the manager will check</div>` : '') +
+    (cleared ? `<div class="mut" style="margin-top:6px">✓ closed ${esc((is.clearedAt || '').slice(5, 16).replace('T', ' '))} · ${esc(RES_TXT[is.resolution] || '')} · ${esc(is.clearedBy || '—')}${is.note ? ' · “' + esc(is.note) + '”' : ''}</div>`
+             : `<div class="how">To close: ${esc(ISS_HOW[is.type] || 'finish the order')}</div>` + (is.type === 'short' || is.type === 'shortreq' ? '' :
+               `<div class="btns"><button class="opn">📦 Open order</button>${(SETTINGS.sup || []).length || is.type === 'incomplete' ? '<button class="sup">🔑 Supervisor / manager</button>' : ''}${is.type === 'wrong' && !is.disputed ? '<button class="dsp">System is wrong?</button>' : ''}</div>`)) + `</div>`;
+}
+function renderIssues() {
+  const n = openIssues().filter(i => i.type !== 'short').length; $('badge').textContent = n || ''; $('badge').dataset.n = n;
+  const list = (issueFilter === 'open' ? openIssues() : issues.filter(i => i.status === 'cleared')).sort((a, b) => (nowKnown(b) ? 1 : 0) - (nowKnown(a) ? 1 : 0) || b.t.localeCompare(a.t));
+  $('issuelist').innerHTML = list.length ? list.slice(0, 150).map(issueCard).join('') : `<div class="mut" style="padding:14px 0">${issueFilter === 'open' ? 'Nothing open 🎉' : 'No closed issues yet.'}</div>`;
+  $('issinfo').textContent = issueFilter === 'open' ? n + ' open' : list.length + ' cleared (last 14 days)';
+  renderOrderIssues();
+}
+function renderOrderIssues() {
+  const mine = cur ? openIssues().filter(i => i.order === cur.id) : [];
+  $('orderissues').style.display = mine.length ? 'block' : 'none';
+  $('orderissuelist').innerHTML = mine.map(issueCard).join('');
+}
+function saveIssue(is) {
+  LS.set('issues', issues);
+  if (store && online) { const { synced, ...data } = is; store.set(COL.issues, is.id, data).then(() => { is.synced = true; LS.set('issues', issues); }).catch(() => {}); }
+}
+function addIssue(type, code, label, reason, expected) {
+  const order = cur ? cur.id : '';
+  const ex = issues.find(i => i.status === 'open' && i.order === order && i.code === code && i.type === type);
+  if (ex) { ex.count = (ex.count || 1) + 1; ex.t = localNow(); saveIssue(ex); renderIssues(); return ex; }
+  const is = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: localNow(), d: V.today(), staff: staffName(), order, type, code, label: label || '', reason: reason || '', expected: expected || '', status: 'open', count: 1 };
+  if (cur && type !== 'short' && orderDone()) Object.assign(is, { status: 'cleared', clearedAt: localNow(), clearedBy: 'auto', resolution: 'logged' });   // extra scans after completion: kept as a record, nothing to fix
+  issues.push(is); saveIssue(is); renderIssues(); return is;
+}
+function clearIssue(id, note, by, resolution) {
+  const is = issues.find(i => i.id === id); if (!is || is.status === 'cleared') return;
+  is.status = 'cleared'; is.clearedAt = localNow(); is.clearedBy = by || staffName(); is.note = note || ''; is.resolution = resolution || 'other';
+  saveIssue(is); renderIssues();
+}
+// staff cannot clear: an issue closes when its order is completed, or with a supervisor PIN and a reason
+function closeOrderIssues(order, note, by, resolution) { openIssues().filter(i => i.order === order && i.type !== 'short' && i.type !== 'shortreq' && !i.disputed).forEach(i => clearIssue(i.id, note, by, resolution)); }
+function onIssueClick(e) {
+  const card = e.target.closest('.iss'); if (!card) return; const is = issues.find(i => i.id === card.dataset.id); if (!is) return;
+  if (e.target.closest('.opn')) { showTab('scan'); handleScan(is.order); return; }
+  if (e.target.closest('.sup')) { showTab('scan'); showResolve(is.order, is.id); return; }
+  if (e.target.closest('.dsp')) { if (!confirm('Send this scan to the manager to check? It will not count as your mistake until the manager decides.')) return; is.disputed = true; is.disputeBy = staffName(); is.disputeAt = localNow(); saveIssue(is); renderIssues(); }
+}
+$('issuelist').onclick = onIssueClick; $('orderissuelist').onclick = onIssueClick;
+$('f-open').onclick = () => { issueFilter = 'open'; $('f-open').classList.add('on'); $('f-done').classList.remove('on'); renderIssues(); };
+$('f-done').onclick = () => { issueFilter = 'done'; $('f-done').classList.add('on'); $('f-open').classList.remove('on'); renderIssues(); syncIssues(true); };
+$('issrefresh').onclick = () => syncIssues(issueFilter === 'done');
+async function syncIssues(full) {
+  if (!store || !online) return;
+  try {
+    const q = full ? [['t', '>=', new Date(Date.now() + V.TZ_MS - 14 * 864e5).toISOString().replace('Z', '')]] : [['status', '==', 'open']];
+    const docs = await store.query(COL.issues, q), cloud = new Map(docs.map(d => [d.id, d.data]));
+    cloud.forEach((v, id) => { const i = issues.findIndex(x => x.id === id); if (i < 0) issues.push({ ...v, id, synced: true }); else if (issues[i].status !== 'cleared' || v.status === 'cleared') issues[i] = { ...issues[i], ...v, id, synced: true }; });
+    if (!full) issues.forEach(i => { if (i.status === 'open' && i.synced && !cloud.has(i.id) && Date.now() - tms(i.t) > 45000) { i.status = 'cleared'; i.clearedAt = i.clearedAt || localNow(); i.clearedBy = i.clearedBy || '(other device)'; } });
+    issues.forEach(i => { if (i.status === 'open' && !i.synced) saveIssue(i); });    // send issues created while offline
+    LS.set('issues', issues); renderIssues();
+  } catch (e) { console.error('issues sync', e); }
+}
+
+/* ---------- scan log: one document per order session (not per scan) ---------- */
+const RES = { hold: 'sent to manager', short: 'shipped short', ok: 'ok', wrong: 'wrong', dup: 'dup', unk: 'unknown', chk: 'check', ovr: 'approved', loose: 'code-only' };
+function sessStart(oid) {
+  sessEnd('switched');
+  sess = { id: oid + '_' + DEVICE + '_' + Date.now().toString(36), order: oid, staff: staffName(), d: V.today(), start: localNow(), end: '', result: 'open', n: {}, scans: [] };
+}
+function sessAdd(code, r) { if (!sess) return; sess.scans.push(localNow().slice(11, 19) + '|' + code + '|' + r); sess.n[r] = (sess.n[r] || 0) + 1; sess.end = localNow(); logq[sess.id] = sess; LS.set('logq', logq); }
+function sessEnd(result) { if (!sess) return; if (sess.scans.length) { sess.result = result; sess.end = localNow(); logq[sess.id] = sess; LS.set('logq', logq); } sess = null; flushLog(); }
+let flushing = false;
+async function flushLog() {
+  if (!store || !online || flushing) return; flushing = true;
+  try { for (const id of Object.keys(logq)) { if (sess && sess.id === id) continue; await store.set(COL.log, id, logq[id]); delete logq[id]; LS.set('logq', logq); } }
+  catch (e) { console.warn('log flush', e); } finally { flushing = false; renderQ(); }
+}
+function renderQ() { const n = Object.keys(logq).length - (sess && logq[sess.id] ? 1 : 0); $('qinfo').textContent = n > 0 ? n + ' order log(s) waiting to be saved online' : 'All order logs saved online ✓'; }
+setInterval(() => { if (sess && sess.scans.length && Date.now() - tms(sess.end) > 180000) { logq[sess.id] = sess; } flushLog(); }, 60000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && sess && sess.scans.length) { const s = sess; logq[s.id] = s; LS.set('logq', logq); if (store && online) store.set(COL.log, s.id, s).catch(() => {}); } });
+function renderLog() {
+  const today = localNow().slice(0, 10), L = log.filter(x => x.t.slice(0, 10) === today), per = {};
+  L.forEach(x => { const k = x.staff || '(no name)'; per[k] = per[k] || { ok: 0, bad: 0, dup: 0, chk: 0, ovr: 0 }; if (x.r === 'short' || x.r === 'hold') return; per[k][x.r === 'ok' || x.r === 'loose' ? 'ok' : x.r === 'dup' ? 'dup' : x.r === 'ovr' ? 'ovr' : x.r === 'chk' || x.r === 'unk' ? 'chk' : 'bad']++; });
+  $('stats').innerHTML = Object.keys(per).map(k => `<div class="staffrow"><b>${esc(k)}</b><span><span class="pill" style="background:#14532d">✓ ${per[k].ok}</span><span class="pill" style="background:#5b1a1a">✗ ${per[k].bad}</span><span class="pill" style="background:#4c1d95">🔁 ${per[k].dup}</span>${per[k].chk ? `<span class="pill" style="background:#78350f">⚠ ${per[k].chk}</span>` : ''}${per[k].ovr ? `<span class="pill" style="background:#1e3a8a">🔑 ${per[k].ovr}</span>` : ''}</span></div>`).join('') || '<div class="mut">No scans yet today.</div>';
+  const ic = { ok: '✅', loose: '✅', dup: '🔁', ovr: '🔑', chk: '⚠', unk: '❓', wrong: '❌' };
+  $('log').innerHTML = L.slice(-40).reverse().map(x => `<div class="lg"><span class="t">${esc(x.t.slice(11, 16))}</span><span class="c">#${esc(x.order)} · ${esc(x.code)}</span><span>${ic[x.r] || '❌'}</span></div>`).join('') || '<div class="mut">—</div>';
+  renderQ();
+}
+function record(r, code, extra) {
+  const e = { t: localNow(), staff: $('staff').value.trim(), order: cur ? cur.id : '', code, r, ...(extra || {}) };
+  log.push(e); if (log.length > 30000) log = log.slice(-30000);
+  LS.set('scanlog', log); sessAdd(code, r);
+}
+
+/* ---------- product catalog (Firestore, compressed chunks; the last good copy stays on the phone) ---------- */
+let pok = new Map(), pokRows = [];
+const CAT = { ver: '', count: 0, at: '', by: '', source: 'none', err: '', busy: null, metaVer: '' };
+let LINKS = V.linksParse(LS.get('links', ''));
+let FRESH = new Set(), FRESH_VER = '', CONF = new Set();
+function catAdopt(obj, source) {
+  pokRows = obj.records; pok = V.buildPok(obj.records);
+  Object.assign(CAT, { ver: obj.ver, count: obj.count, at: obj.at, by: obj.by, source, err: '' });
+  catChip(); renderIssues();
+}
+let pokReadyResolve; const pokReady = new Promise(r => { pokReadyResolve = r; });
+async function catInit() {
+  const c = await V.idb.get('cat_pok');
+  if (c && !V.checkCatalog(c)) catAdopt(c, 'saved');
+  if (c) pokReadyResolve();
+  else setTimeout(pokReadyResolve, 15000);          // never wait forever for a first download
+  const ok = await authReady;
+  if (!ok || !store) { if (!c) { CAT.err = 'No catalog on this phone and not online.'; catChip(); } pokReadyResolve(); return; }
+  store.watch(COL.cat, 'meta', (m, err) => { if (err) { CAT.err = 'Cannot read the catalog: ' + (err.code || err.message); catChip(); pokReadyResolve(); return; } onMeta(m || {}); });
+}
+async function onMeta(m) {
+  if (m.fresh && m.fresh.ver !== FRESH_VER) { FRESH_VER = m.fresh.ver; FRESH = new Set((typeof m.fresh.codes === 'string' ? m.fresh.codes.split(' ') : (m.fresh.codes || [])).filter(Boolean).map(nz)); CONF = new Set(LS.get('conf_' + FRESH_VER, [])); loadConfirmed(); }
+  const info = m.pok; CAT.metaVer = info ? info.ver : '';
+  if (!info) { if (!CAT.ver) CAT.err = 'The manager has not uploaded the PokPok list yet.'; catChip(); pokReadyResolve(); return; }
+  if (info.ver === CAT.ver) { catChip(); pokReadyResolve(); return; }
+  await catFetch(info);
+}
+async function catFetch(info) {
+  if (CAT.busy) return CAT.busy;
+  CAT.busy = (async () => {
+    catChip('Downloading the new catalog…');
+    try { const obj = await V.downloadCatalog(store, 'pok', info); catAdopt(obj, 'online'); await V.idb.set('cat_pok', obj); }
+    catch (e) { CAT.err = e.message; catChip(); }
+    finally { CAT.busy = null; pokReadyResolve(); }
+  })();
+  return CAT.busy;
+}
+async function loadConfirmed() { if (!store || !online || !FRESH_VER) return; try { const d = await store.get(COL.meta, 'confirm_' + FRESH_VER); if (d) Object.keys(d).forEach(k => CONF.add(nz(k))); } catch (e) {} }
+function catChip(msg) {
+  const el = $('catchip'); let cls = 'ok', t;
+  if (msg) { cls = 'warn'; t = '📦 ' + msg; }
+  else if (!CAT.ver) { cls = 'bad'; t = '📦 No catalog' + (CAT.err ? ' — ' + CAT.err : ''); }
+  else { t = '📦 Catalog ' + CAT.count.toLocaleString('en-US') + ' items · ' + V.when(CAT.at); if (CAT.err) { cls = 'warn'; t += ' · ⚠ ' + CAT.err; } else if (CAT.metaVer && CAT.metaVer !== CAT.ver) { cls = 'warn'; t += ' · update waiting'; } }
+  el.className = 'catchip ' + cls; el.textContent = t;
+  if ($('tab-data').classList.contains('on')) renderData();
+}
+
+/* ---------- orders ---------- */
+async function fetchOrder(id) {
+  if (!store || !online) return null;
+  try { const d = await store.get(COL.orders, id); if (d && d.items) { d.fetchedAt = Date.now(); orders[id] = d; LS.set('orders', orders); return d; } }
+  catch (e) { lastErr = e.code || e.message; }
+  return null;
+}
+const looksLikeOrder = c => /^\d{4,10}$/.test(c);
+let lastErr = '';
+async function findOrder(code) {
+  const local = orders[code] ? code : Object.keys(orders).find(k => norm(k) === code);
+  if (local) { await fetchOrder(local); return local; }             // always re-read: the order may have changed or been cancelled
+  if (cur && pok.has(code)) return null;                             // a known item label: no need to ask the database
+  if (!cur || looksLikeOrder(code)) { const d = await fetchOrder(code); if (d) return code; }
+  return null;
+}
+
+/* ---------- leaving / holding an order ---------- */
+let pendingNext = null;
+const isUnfinished = () => { if (!cur || !orders[cur.id]) return false; return orders[cur.id].items.some((it, i) => cur.scanned[i] < it.qty); };
+function startOrder(oid) {
+  pendingNext = null; hideAct();
+  const o = orders[oid];
+  if (o.st === 'c') { cur = null; render(); setStatus('stop', '⛔ ORDER CANCELLED · Order ត្រូវបានលុប', `#${esc(oid)} was cancelled in Vrich — <b>do not pack</b>. Put the items back.`); sBad(); buzz([200, 80, 200]); return; }
+  const before = log.filter(x => x.order === oid && (x.r === 'ok' || x.r === 'ovr' || x.r === 'loose'));
+  sessStart(oid); cur = { id: oid, scanned: o.items.map(() => 0) }; render();
+  if (o.changedAt && before.some(x => x.t < o.changedAt)) { setStatus('warn', '⚠ ORDER CHANGED · Order បានកែប្រែ', `#${esc(oid)} was changed in Vrich after it was scanned (${esc(V.when(o.changedAt))}). Re-check every item against this list.`); sWarn(); buzz([60, 40, 60, 40, 60]); }
+  else if (before.length) { setStatus('warn', '⚠ ORDER ALREADY SCANNED BEFORE · Order នេះធ្លាប់ស្កេនរួច', `#${esc(oid)} had ${before.length} item(s) scanned earlier (this device) — possible double packing. Re-scan the items to continue.`); sWarn(); buzz([60, 40, 60]); }
+  else { setStatus('', `Order #${oid}`, `${esc(o.fb || o.user)} · ${o.items.reduce((a, i) => a + i.qty, 0)} item(s) — scan each item`); sOk(); buzz(25); }
+  const sh = openIssues().find(i => i.order === oid && i.type === 'short'), rq = openIssues().find(i => i.order === oid && i.type === 'shortreq');
+  if (sh) setStatus('done', '📦 SHIP SHORT APPROVED · #' + oid, 'Pack and ship without: <b>' + esc((sh.label || '').replace(/^(Missing|Shipped without): /, '')) + '</b> · ' + esc(sh.reason || '') + '<br>Scan the items that are here, then tap Next.');
+  else if (rq) setStatus('warn', '⏳ WAITING FOR MANAGER · #' + oid, 'Ship short request sent ' + esc(V.when(rq.t)) + '. Put the order aside until the manager answers.');
+}
+function askLeave(next, hold) {
+  pendingNext = next; const o = orders[cur.id];
+  const left = o.items.reduce((a, it, i) => a + Math.max(0, it.qty - cur.scanned[i]), 0);
+  setStatus('warn', hold ? '⏸ HOLD THIS ORDER? · ផ្អាក Order' : '⚠ ORDER NOT FINISHED · Order មិនទាន់ចប់', `#${esc(cur.id)} still has <b>${left}</b> item(s) not scanned<br>${expectedText(o)}` +
+    `<div style="display:grid;gap:8px;margin-top:10px"><button class="pri" id="leaveBtn" style="min-height:54px;font-size:18px">⏸ Hold · ទុកសិន (add to issues)</button><button id="stayBtn" style="min-height:48px">បន្តស្កេន · Keep scanning this order</button></div>`);
+  sWarn(); buzz([80, 40, 80]);
+}
+function leaveOrder() {
+  if (!cur || pendingNext == null) return;
+  const o = orders[cur.id], n = pendingNext;
+  const left = o.items.reduce((a, it, i) => a + Math.max(0, it.qty - cur.scanned[i]), 0), got = o.items.reduce((a, it, i) => a + Math.min(cur.scanned[i], it.qty), 0);
+  addIssue('incomplete', '(on hold)', 'Order on hold', `Held with ${left} item(s) not scanned (${got} scanned)`, plain(expectedText(o)));
+  pendingNext = null; sessEnd('hold');
+  if (n === '__reset') { cur = null; render(); setStatus('', 'On hold · Ready', 'Scan the next order number · ស្កេនលេខ Order បន្ទាប់'); }
+  else startOrder(n);
+}
+$('status').addEventListener('click', e => {
+  if (e.target.closest('#leaveBtn')) leaveOrder();
+  else if (e.target.closest('#stayBtn')) { pendingNext = null; setStatus('', 'Continue scanning', `#${esc(cur.id)}`); focusScan(); }
+});
+
+/* ---------- action panel: first-scan confirmation + supervisor approval ---------- */
+let ACT = null;
+function hideAct() { ACT = null; $('act').className = ''; $('act').innerHTML = ''; }
+const openLines = o => o.items.map((it, i) => i).filter(i => cur.scanned[i] < o.items[i].qty);
+function supButton(code, label) {
+  if (!cur || !(SETTINGS.sup || []).length || !openLines(orders[cur.id]).length) return '';
+  return `<div style="margin-top:10px"><button id="supBtn" data-code="${esc(code)}" data-label="${esc(label || '')}" style="min-height:44px;font-size:16px;background:#1e3a8a;border-color:#3b82f6">🔑 Supervisor approve · អ្នកគ្រប់គ្រងអនុញ្ញាត</button></div>`;
+}
+$('status').addEventListener('click', e => { const b = e.target.closest('#supBtn'); if (b) showSup(b.dataset.code, b.dataset.label); });
+function showConfirm(o, idx, code, info) {
+  const it = o.items[idx];
+  ACT = { kind: 'confirm', idx, code, info };
+  $('act').className = 'on';
+  $('act').innerHTML = `<h3>🆕 New or changed label — check the item · ពិនិត្យទំនិញ</h3><div class="mut">The catalog for <b>${esc(code)}</b> was just added or changed. Does the item in your hand match?</div>` +
+    `<div class="q">${esc(it.code)} · ${esc(itemLabel(it))}</div><div class="mut">Label says: ${esc(info.label)}</div>` +
+    `<div class="two"><button class="yes" id="cfYes">✓ Yes · ត្រូវ</button><button class="no" id="cfNo">✗ No · មិនត្រូវ</button></div>`;
+  setStatus('warn', '🆕 CONFIRM ITEM · បញ្ជាក់ទំនិញ', 'Check the item, then tap ✓ or ✗'); sWarn(); buzz([40, 40, 40]);
+  $('cfYes').onclick = () => { if (!ACT || ACT.kind !== 'confirm') return; const a = ACT; hideAct(); CONF.add(nz(a.info.code)); LS.set('conf_' + FRESH_VER, [...CONF]); if (store && online) store.set(COL.meta, 'confirm_' + FRESH_VER, { [a.info.code]: staffName() + '|' + localNow() }, true).catch(() => {}); correct(orders[cur.id], a.idx, a.code, { confirmed: true }); focusScan(); };
+  $('cfNo').onclick = () => { if (!ACT || ACT.kind !== 'confirm') return; const a = ACT; hideAct(); record('chk', a.code); addIssue('check', a.code, a.info.label, 'Staff says the item does NOT match the catalog (new or changed label) — check PokPok', plain(expectedText(orders[cur.id]))); setStatus('bad', '✗ NOT COUNTED', 'Reported to the manager. Take the right item.' + '<br>' + expectedText(orders[cur.id])); sBad(); render(true); focusScan(); };
+}
+let pinFails = 0, pinLockUntil = 0;
+function showSup(code, label) {
+  if (!cur) return; const o = orders[cur.id], lines = openLines(o); if (!lines.length) return;
+  ACT = { kind: 'sup', code, label, sel: lines.length === 1 ? lines[0] : -1 };
+  $('act').className = 'on';
+  $('act').innerHTML = `<h3>🔑 Supervisor approval · ${esc(code)}</h3><div class="mut">Counts this item for ONE line of order #${esc(cur.id)} only. The catalog is not changed. Saved with the supervisor's name.</div>` +
+    `<div class="lines">${lines.map(i => `<button data-i="${i}" class="${ACT.sel === i ? 'sel' : ''}"><b>${esc(o.items[i].code)}</b> ${esc(itemLabel(o.items[i]))} · ${cur.scanned[i]}/${o.items[i].qty}</button>`).join('')}</div>` +
+    `<input id="supPin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN"><input id="supWhy" placeholder="Reason (e.g. new label not in PokPok yet)" style="font-size:16px;letter-spacing:0;text-align:left">` +
+    `<div class="two"><button class="yes" id="supOk">Approve</button><button id="supCancel">Cancel</button></div><div id="supMsg" class="mut" style="margin-top:6px"></div>`;
+  $('act').querySelectorAll('.lines button').forEach(b => b.onclick = () => { ACT.sel = +b.dataset.i; $('act').querySelectorAll('.lines button').forEach(x => x.classList.toggle('sel', x === b)); });
+  $('supCancel').onclick = () => { hideAct(); focusScan(); };
+  $('supOk').onclick = supApprove; $('supPin').addEventListener('keydown', e => { if (e.key === 'Enter') supApprove(); });
+  $('supPin').focus();
+}
+function supApprove() {
+  if (!ACT || ACT.kind !== 'sup') return;
+  const msg = $('supMsg');
+  if (Date.now() < pinLockUntil) { msg.textContent = 'Too many wrong PINs — wait ' + Math.ceil((pinLockUntil - Date.now()) / 1000) + ' s'; return; }
+  if (ACT.sel < 0) { msg.textContent = 'Choose which line this item is'; return; }
+  const sup = checkPin($('supPin').value, msg); if (!sup) return;
+  const a = ACT, o = orders[cur.id], it = o.items[a.sel], why = $('supWhy').value.trim();
+  hideAct();
+  const rec = { t: localNow(), d: V.today(), order: cur.id, scanned: a.code, scannedLabel: a.label || '', line: it.stock || it.code, lineDesc: itemLabel(it), staff: staffName(), sup: sup.name, why };
+  if (store && online) store.set(COL.ovr, cur.id + '_' + Date.now().toString(36), rec).catch(() => {});
+  openIssues().filter(i => i.order === cur.id && i.code === a.code && i.type !== 'incomplete').forEach(i => clearIssue(i.id, why, sup.name, 'approved'));
+  cur.scanned[a.sel]++; record('ovr', a.code, { item: it.stock || it.code, sup: sup.name }); render();
+  afterCount(o, it, '🔑 APPROVED by ' + sup.name);
+}
+
+function checkPin(pin, msg) {
+  if (Date.now() < pinLockUntil) { msg.textContent = 'Too many wrong PINs — wait ' + Math.ceil((pinLockUntil - Date.now()) / 1000) + ' s'; return null; }
+  const sup = (SETTINGS.sup || []).find(s => s.h === V.pinHash(String(pin).trim(), s.salt));
+  if (!sup) { pinFails++; if (pinFails >= 3) { pinLockUntil = Date.now() + 60000; pinFails = 0; } msg.textContent = 'Wrong PIN'; if ($('supPin')) $('supPin').value = ''; sBad(); return null; }
+  pinFails = 0; return sup;
+}
+const orderDone = () => !!cur && orders[cur.id] && orders[cur.id].items.every((x, i) => cur.scanned[i] >= x.qty);
+// supervisor closes an issue (or the whole order) with a reason
+function showResolve(order, issueId) {
+  const is = issueId ? issues.find(i => i.id === issueId) : null;
+  const here = cur && cur.id === order, missingHere = here && !orderDone();
+  const canShort = missingHere || (is && is.type === 'incomplete');
+  const reasons = [];
+  const hasSup = (SETTINGS.sup || []).length > 0;
+  if (canShort) reasons.push(['ask', '📨 Ask the manager to approve ship short (no PIN)']);
+  if (canShort && hasSup) reasons.push(['short', '📦 Ship short now — supervisor PIN']);
+  if (is && hasSup) { reasons.push(['mistake', '↩ Mistake scan — nothing is wrong with the order']); reasons.push(['other', '✎ Other (write why)']); }
+  if (!reasons.length) return;
+  ACT = { kind: 'resolve', order, issueId, reason: reasons.length === 1 ? reasons[0][0] : '' };
+  const missingTxt = missingHere ? plain(expectedText(orders[order])) : (is && is.expected) || '';
+  $('act').className = 'on';
+  $('act').innerHTML = `<h3>🔑 Supervisor / manager · order #${esc(order)}</h3>` + (is ? `<div class="mut">${esc((is.label || is.code) + ' — ' + is.reason)}</div>` : '') + (canShort && missingTxt ? `<div class="mut" style="margin-top:4px">Missing: ${esc(missingTxt.replace(/^EXPECTED · ត្រូវយក: /, ''))}</div>` : '') +
+    `<div class="reasons">${reasons.map(([k, l]) => `<button data-r="${k}" class="${ACT.reason === k ? 'sel' : ''}">${esc(l)}</button>`).join('')}</div>` +
+    `<input id="supWhy" placeholder="Note (required for Other)" style="font-size:16px;letter-spacing:0;text-align:left"><input id="supPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Supervisor PIN" style="${ACT.reason === 'ask' ? 'display:none' : ''}">` +
+    `<div class="two"><button class="yes" id="resOk">Confirm</button><button id="resCancel">Cancel</button></div><div id="supMsg" class="mut" style="margin-top:6px"></div>`;
+  $('act').querySelectorAll('.reasons button').forEach(b => b.onclick = () => { ACT.reason = b.dataset.r; $('act').querySelectorAll('.reasons button').forEach(x => x.classList.toggle('sel', x === b)); $('supPin').style.display = ACT.reason === 'ask' ? 'none' : ''; });
+  $('resCancel').onclick = () => { hideAct(); focusScan(); };
+  $('resOk').onclick = resolveOk; $('supPin').addEventListener('keydown', e => { if (e.key === 'Enter') resolveOk(); });
+  window.scrollTo(0, 0);
+}
+function resolveOk() {
+  if (!ACT || ACT.kind !== 'resolve') return;
+  const msg = $('supMsg'), why = $('supWhy').value.trim(), a = ACT;
+  if (!a.reason) { msg.textContent = 'Choose a reason'; return; }
+  if (a.reason === 'other' && !why) { msg.textContent = 'Write why'; return; }
+  if (a.reason === 'ask') { askManager(a, why); return; }
+  const sup = checkPin($('supPin').value, msg); if (!sup) return;
+  hideAct();
+  if (a.reason !== 'short') { clearIssue(a.issueId, why, sup.name, a.reason); setStatus('', '✓ Issue closed by ' + sup.name, esc(RES_TXT[a.reason] || '') + (why ? ' · ' + esc(why) : '')); focusScan(); return; }
+  // ship short: the order goes out without the missing item(s); the manager fixes it in Vrich
+  const here = cur && cur.id === a.order, is = a.issueId ? issues.find(i => i.id === a.issueId) : null;
+  const missing = (here && !orderDone() ? plain(expectedText(orders[a.order])) : (is && is.expected) || '').replace(/^EXPECTED · ត្រូវយក: /, '');
+  const keepCur = cur; cur = here ? cur : { id: a.order, scanned: [] };
+  const sIs = addIssue('short', '(ship short)', 'Shipped without: ' + missing, 'Approved by ' + sup.name + (why ? ' — ' + why : ''), ''); const oo = orders[a.order] || {}; sIs.fb = oo.fb || oo.user || ''; saveIssue(sIs);
+  cur = keepCur;
+  closeOrderIssues(a.order, why, sup.name, 'short');
+  if (here) { record('short', '(ship short)', { sup: sup.name }); sessEnd('short'); cur = null; render(); }
+  setStatus('warn', '📦 SHIP SHORT ✓ · #' + a.order, 'Approved by ' + esc(sup.name) + '. Pack and ship without: <b>' + esc(missing) + '</b><br>The manager will fix the order in Vrich.'); sDone();
+  focusScan();
+}
+
+const missingOf = (order, is) => ((cur && cur.id === order && !orderDone() ? plain(expectedText(orders[order])) : (is && is.expected) || '')).replace(/^EXPECTED · ត្រូវយក: /, '');
+// staff ask the manager (upload page) to approve shipping without the missing item(s); the order waits meanwhile
+function askManager(a, why) {
+  const is = a.issueId ? issues.find(i => i.id === a.issueId) : null, missing = missingOf(a.order, is), o = orders[a.order] || {};
+  hideAct();
+  if (openIssues().some(i => i.order === a.order && i.type === 'shortreq')) { setStatus('warn', '⏳ Already sent to the manager', '#' + esc(a.order)); return; }
+  const keepCur = cur; cur = { id: a.order, scanned: [] };
+  const r = addIssue('shortreq', '(ship short?)', 'Missing: ' + missing, 'Asked by ' + staffName() + (why ? ' — ' + why : ''), '');
+  r.fb = o.fb || o.user || ''; saveIssue(r);
+  cur = keepCur;
+  if (cur && cur.id === a.order) { record('hold', '(ask ship short)'); sessEnd('hold'); cur = null; render(); }
+  setStatus('warn', '⏳ SENT TO MANAGER · #' + a.order, 'Ship short request for: <b>' + esc(missing) + '</b><br>Put the order aside. This phone will show the answer. Scan the next order.'); sWarn();
+  focusScan();
+}
+// the manager answered a request (upload page): tell the staff at once
+function managerAnswered(before, now) {
+  if (!before || before.type !== 'shortreq' || ACT) return;
+  if (now.type === 'short') { setStatus('done', '✓ MANAGER APPROVED SHIP SHORT · #' + now.order, 'Pack and ship without: <b>' + esc((now.label || '').replace(/^(Missing|Shipped without): /, '')) + '</b>' + (now.mnote ? '<br>Manager: ' + esc(now.mnote) : '')); sDone(); buzz([40, 60, 40]); }
+  else if (now.type === 'incomplete') { setStatus('bad', '✗ SHIP SHORT REJECTED · #' + now.order, 'Find the missing item and finish the order.' + (now.mnote ? '<br>Manager: ' + esc(now.mnote) : '')); sBad(); buzz([200, 80, 200]); }
+}
+
+/* ---------- scanning ---------- */
+function exactKeys(it) { if (it.stock) return [norm(it.stock)]; const c = norm(it.code); return [c]; }
+function expectedText(o) {
+  const missing = o.items.map((it, i) => ({ it, left: it.qty - cur.scanned[i] })).filter(x => x.left > 0);
+  return 'EXPECTED · ត្រូវយក: ' + missing.map(x => `<b>${esc(x.it.code)}</b> ${esc(itemLabel(x.it))}${x.it.loc ? ' 📍' + esc(x.it.loc) : ''}${x.left > 1 ? ' ×' + x.left : ''}`).join(' &nbsp;|&nbsp; ');
+}
+function afterCount(o, it, head) {
+  if (o.items.every((x, i) => cur.scanned[i] >= x.qty)) {
+    const n = openIssues().filter(i => i.order === cur.id && i.type !== 'short' && !i.disputed).length;
+    closeOrderIssues(cur.id, '', staffName(), 'completed');
+    setStatus('done', 'ORDER COMPLETE ✓', `#${esc(cur.id)} — ready for packer · ប្រគល់ឲ្យអ្នកវេចខ្ចប់` + (n ? `<br>✓ ${n} issue(s) of this order closed` : '')); sDone(); buzz([40, 60, 40]);
+    sessEnd('complete'); sessReopen();
+  } else { setStatus('ok', head || '✓ CORRECT', `${esc(it.stock || it.code)} · ${esc(itemLabel(it))}${it.loc ? ' · 📍 ' + esc(it.loc) : ''}`); sOk(); buzz(25); }
+}
+function sessReopen() { /* scans after completion (duplicates) start a fresh session for the same order */ if (cur) { sess = { id: cur.id + '_' + DEVICE + '_' + Date.now().toString(36), order: cur.id, staff: staffName(), d: V.today(), start: localNow(), end: '', result: 'after-complete', n: {}, scans: [] }; } }
+function correct(o, idx, code, extra) { cur.scanned[idx]++; const it = o.items[idx]; record('ok', code, { item: it.stock || it.code, ...(extra || {}) }); render(); afterCount(o, it); }
+// which line of this order does a scanned PokPok item belong to? (same rules as Scan Verify 13)
+function pokMatch(o, info) {
+  let lines = o.items.map((it, i) => i).filter(i => norm(o.items[i].code) === info.sale);
+  if (!lines.length) return { idx: -1, state: 'notinorder' };
+  const fits = lines.filter(i => V.fits(info, o.items[i]));
+  if (!fits.length) return { idx: -1, state: 'wrongvariant' };
+  const open = fits.filter(i => cur.scanned[i] < o.items[i].qty);
+  if (!open.length) return { idx: -1, state: 'already' };
+  const want = new Set([...info.attrs, ...info.rest]);
+  const strong = open.filter(i => { const D = toks(o.items[i].desc); return D.size === want.size && [...D].every(t => want.has(t)); });
+  const pick = strong.length ? strong : open;
+  if (new Set(pick.map(i => nz(o.items[i].desc))).size > 1) return { idx: -1, state: 'ambig' };
+  return { idx: pick[0], state: 'ok' };
+}
+async function handleScan(raw) {
+  const code = norm(raw); if (!code) return;
+  if (ACT && ACT.kind === 'confirm') { hideAct(); }
+  else if (ACT) return;                              // supervisor panel open: ignore scans
+  await pokReady; if (CAT.busy) await CAT.busy;
+
+  const oid = await findOrder(code);
+  if (oid && cur && cur.id === oid) { if (orders[oid].st === 'c') { startOrder(oid); return; } setStatus('warn', '⚠ ORDER SCANNED TWICE · ស្កេន Order ស្ទួន', `#${esc(oid)} is already open — scan the items, or tap "Next" to start another`); sWarn(); buzz([60, 40, 60]); return; }
+  if (oid && cur && cur.id !== oid && isUnfinished()) { askLeave(oid); return; }
+  if (oid) { startOrder(oid); return; }
+  if (!cur) { setStatus('bad', 'Order not found · រកមិនឃើញ Order', 'Scan the ORDER number first · ស្កេនលេខ Order ជាមុន<br>If you did: the manager has not uploaded this order yet.' + (!online ? '<br>☁ This phone is offline.' : '') + (lastErr ? '<br>☁ ' + esc(lastErr) : '')); sBad(); buzz([80, 40, 80]); return; }
+
+  pendingNext = null;
+  const o = orders[cur.id], open = i => cur.scanned[i] < o.items[i].qty;
+  const info = pok.get(code); let why = 'unknown', label = null, linkedDone = false;
+  // 0) a manager link (upload page → 🔗 Match): this PokPok item IS that Vrich stock code
+  const lk = info && !info.ambiguous ? LINKS.get(nz(info.code)) : null;
+  if (lk) {
+    const li = o.items.findIndex((it, i) => open(i) && nz(it.stock) === nz(lk.stock));
+    if (li >= 0) { correct(o, li, code, { link: true }); return; }
+    if (o.items.some(it => nz(it.stock) === nz(lk.stock))) { linkedDone = true; why = 'already'; label = info.label; }
+  }
+  if (info && info.noAuto && !linkedDone) {
+    const ex = o.items.findIndex((it, i) => open(i) && it.stock && norm(it.stock) === code);
+    if (ex >= 0) { correct(o, ex, code); return; }
+    record('chk', code); sWarn(); buzz([60, 40, 60]);
+    const lbl = info.ambiguous ? '' : info.label, why2 = info.flagWhy || 'conflicting identifier';
+    setStatus('warn', '⚠ CHECK BY EYE · ពិនិត្យដោយភ្នែក', `<b>${esc(lbl || code)}</b>${lbl ? ' <span style="opacity:.8">(' + esc(code) + ')</span>' : ''}<br>The catalog flags this: ${esc(why2)}. Nothing was counted — compare the item with the order by eye.<br>` + expectedText(o) + supButton(code, lbl));
+    addIssue('check', code, lbl, 'Catalog record flagged (' + why2 + ') — not counted automatically', plain(expectedText(o))); render(true); return;
+  }
+  if (info && !linkedDone) {
+    const m = pokMatch(o, info); label = info.label;
+    if (m.idx >= 0) { if (FRESH.has(nz(info.code)) && !CONF.has(nz(info.code))) { showConfirm(o, m.idx, code, info); return; } correct(o, m.idx, code, { pok: true }); return; }
+    if (m.state === 'ambig') {
+      record('chk', code);
+      setStatus('warn', '⚠ Cannot tell which line', `<b>${esc(info.label)}</b> fits more than one line of this order — check size/colour by eye` + supButton(code, info.label)); sWarn(); buzz([60, 40, 60]);
+      addIssue('check', code, info.label, 'Fits more than one line of this order — check size/colour by eye', plain(expectedText(o))); render(true); return;
+    }
+    why = m.state;
+  }
+  // exact Vrich stock code (typed in, or a Vrich label)
+  let idx = o.items.findIndex((it, i) => open(i) && exactKeys(it).includes(code) && it.stock);
+  if (idx >= 0) { correct(o, idx, code); return; }
+  // bare sale code without size/colour: accept only if it cannot be confused
+  if (!info) {
+    const loose = o.items.map((it, i) => i).filter(i => open(i) && norm(o.items[i].code) === code);
+    if (loose.length === 1) { idx = loose[0]; cur.scanned[idx]++; const it = o.items[idx]; record('loose', code); render(); if (o.items.every((x, i) => cur.scanned[i] >= x.qty)) { afterCount(o, it); return; } setStatus('warn', '✓ CODE OK · check size/colour', `${esc(it.code)} should be <b>${esc(itemLabel(it))}</b> — barcode had no size/colour`); sWarn(); return; }
+    if (loose.length > 1) { record('chk', code); setStatus('warn', '⚠ Scan the item label', `${esc(code)} appears on ${loose.length} lines of this order (different size/colour)`); sWarn(); buzz([60, 40, 60]); addIssue('check', code, '', `Appears on ${loose.length} lines (different size/colour) — scan the item label`, plain(expectedText(o))); render(true); return; }
+  }
+  // duplicate or genuine mismatch
+  const seen = o.items.some(it => exactKeys(it).includes(code) || norm(it.code) === code);
+  const name = label ? `<b>${esc(label)}</b> <span style="opacity:.8">(${esc(code)})</span>` : `<b>${esc(code)}</b>`;
+  const left = o.items.some((it, i) => open(i));
+  if (why === 'already' || (!label && seen)) {
+    record('dup', code); sDup(); buzz([120, 60, 120, 60, 120]);
+    setStatus('dup', '🔁 DUPLICATE · ស្កេនស្ទួន', `${name} was already scanned for this order — check it` + (left ? '<br>' + expectedText(o) : ''));
+    addIssue('dup', code, label || '', 'Already scanned for this order — check it', left ? plain(expectedText(o)) : ''); render(true); return;
+  }
+  const unk = !label;
+  record(unk ? 'unk' : 'wrong', code); sBad(); buzz([200, 80, 200]);
+  const head = why === 'wrongvariant' ? `${name} — right product, WRONG size/colour`
+            : label ? `${name} — not in this order`
+            : `${name} is not in the product catalog. It may be a new product the manager has not uploaded yet, or a wrong item — check it by eye. Nothing was counted. Tap ⏸ Hold if the order must wait.`;
+  setStatus('bad', unk ? '? NOT IN CATALOG · មិនមានក្នុងបញ្ជីទំនិញ' : '✗ WRONG ITEM · ខុសទំនិញ', `<span class="big">${esc(code)}</span><br>` + head + '<br>' + expectedText(o) + (unk || why === 'wrongvariant' ? supButton(code, label) : ''));
+  addIssue('wrong', code, label || '', plain(head), plain(expectedText(o))); render(true);
+}
+
+/* ---------- Lists tab (read only) ---------- */
+let listMode = 'ord', listDay = V.today(), dayIdx = {};
+async function loadDay(d) {
+  if (dayIdx[d] && Date.now() - dayIdx[d].at < 120000) return dayIdx[d];
+  if (!store || !online) return { o: {}, at: 0 };
+  try { const x = await store.get(COL.idx, d); dayIdx[d] = { o: V.idxMap(x && x.o), at: Date.now() }; } catch (e) { dayIdx[d] = { o: {}, at: 0, err: e.code || e.message }; }
+  return dayIdx[d];
+}
+async function renderLists() {
+  const q = nz($('lq').value), terms = q.split(' ').filter(Boolean), box = $('lresults');
+  $('ldays').style.display = listMode === 'ord' ? 'flex' : 'none';
+  if (listMode === 'pok') {
+    if (!terms.length) { $('lcount').textContent = pokRows.length.toLocaleString('en-US') + ' items — type to search'; box.innerHTML = ''; return; }
+    const hit = []; for (const r of pokRows) { const h = nz(r[0] + ' ' + r[1] + ' ' + r[2] + ' ' + String(r[3] || '').replace(/-/g, ' ')); if (terms.every(t => h.includes(t))) { hit.push(r); if (hit.length >= 60) break; } }
+    $('lcount').textContent = hit.length >= 60 ? 'first 60 matches' : hit.length + ' match(es)';
+    box.innerHTML = hit.map(r => `<div class="rw"><b>${esc(r[0])}</b> <span class="mut">${esc(r[2])} ${esc(String(r[3] || '').trim())}</span>${r[1] ? `<div class="mut">🏷 barcode: ${esc(r[1])}</div>` : ''}</div>`).join('') || '<div class="mut" style="padding:12px 0">Nothing found.</div>';
+    return;
+  }
+  const days = [V.today(), V.dayShift(V.today(), -1), V.dayShift(V.today(), -2)];
+  $('ldays').innerHTML = days.map((d, i) => `<button data-d="${d}" class="${d === listDay ? 'on' : ''}">${['Today', 'Yesterday', d.slice(5)][i]}</button>`).join('');
+  $('lcount').textContent = 'Loading…';
+  const X = await loadDay(listDay), ids = Object.keys(X.o);
+  const doneSet = new Set(log.filter(x => x.r === 'ok' || x.r === 'ovr' || x.r === 'loose').map(x => x.order));
+  const hits = ids.filter(id => !terms.length || terms.every(t => nz(id + ' ' + (X.o[id].f || '')).includes(t))).sort();
+  $('lcount').textContent = X.err ? '⚠ ' + X.err : hits.length + ' order(s) ' + listDay + (ids.length ? '' : ' — none uploaded yet');
+  box.innerHTML = hits.slice(0, 80).map(id => { const e = X.o[id]; return `<div class="rw tap" data-k="${esc(id)}"><b>#${esc(id)}</b> <span class="mut">${esc(e.f || '')} · ${e.n || ''} item(s)</span>${e.st === 'c' ? '<span class="st c">CANCELLED</span>' : ''}${doneSet.has(id) ? '<span class="st">scanned here</span>' : ''}</div>`; }).join('') + (hits.length > 80 ? '<div class="mut" style="padding:8px 0">Showing 80 — type to search.</div>' : '');
+}
+$('lm-ord').onclick = () => { listMode = 'ord'; $('lq').value = ''; $('lm-ord').classList.add('on'); $('lm-pok').classList.remove('on'); renderLists(); };
+$('lm-pok').onclick = () => { listMode = 'pok'; $('lq').value = ''; $('lm-pok').classList.add('on'); $('lm-ord').classList.remove('on'); renderLists(); };
+$('ldays').onclick = e => { const b = e.target.closest('[data-d]'); if (b) { listDay = b.dataset.d; renderLists(); } };
+let lqT; $('lq').addEventListener('input', () => { clearTimeout(lqT); lqT = setTimeout(renderLists, 200); });
+$('lresults').onclick = e => { const r = e.target.closest('.rw.tap'); if (r) { showTab('scan'); handleScan(r.dataset.k); } };
+
+/* ---------- Data tab ---------- */
+function renderData() {
+  $('catinfo').innerHTML = CAT.ver ? `<b>${CAT.count.toLocaleString('en-US')}</b> PokPok items · uploaded ${esc(V.when(CAT.at))} by ${esc((CAT.by || '').split('@')[0])} · version ${esc(CAT.ver)} (${CAT.source === 'saved' ? 'saved copy on this phone' : 'downloaded'})${CAT.err ? '<br>⚠ ' + esc(CAT.err) : ''}${CAT.metaVer && CAT.metaVer !== CAT.ver ? '<br>A newer version is online.' : ''}` : 'No catalog yet.' + (CAT.err ? ' ' + esc(CAT.err) : '');
+  fbState();
+  $('devinfo').textContent = 'Device ' + DEVICE + ' · ' + Object.keys(orders).length + ' order(s) saved · ' + log.length + ' scan(s) in the last ' + KEEP_DAYS + ' days';
+}
+$('catreload').onclick = async () => {
+  if (!store || !online) { $('catmsg').textContent = 'Offline'; return; }
+  $('catmsg').textContent = 'Checking…';
+  try { const m = await store.get(COL.cat, 'meta'); if (m && m.pok && m.pok.ver !== CAT.ver) { await catFetch(m.pok); $('catmsg').textContent = CAT.err ? '⚠ ' + CAT.err : 'Updated ✓'; } else $('catmsg').textContent = 'Already up to date ✓'; }
+  catch (e) { $('catmsg').textContent = '⚠ ' + (e.code || e.message); }
+  renderData();
+};
+$('clear').onclick = () => { if (confirm('Delete the orders saved on THIS device? (Online copies are not touched.)')) { orders = {}; LS.set('orders', orders); cur = null; render(); renderData(); } };
+$('fbsave').onclick = () => { const cfg = V.parseConfig($('fbcfg').value); if (!cfg) { alert('Could not find apiKey and projectId in what you pasted.'); return; } LS.set('fbconfig', cfg); location.reload(); };
+$('fboff').onclick = () => { LS.del('fbconfig'); location.reload(); };
+
+/* ---------- scan box, keyboard, focus ---------- */
+const coarse = window.matchMedia && matchMedia('(pointer:coarse)').matches;
+let kbdOn = !coarse;
+function applyKbd() { $('scanbox').inputMode = kbdOn ? 'text' : 'none'; $('kbd').style.opacity = kbdOn ? 1 : .6; }
+function focusScan() { if (ACT && ACT.kind === 'sup') return; if ($('tab-scan').classList.contains('on')) $('scanbox').focus({ preventScroll: true }); }
+$('kbd').onclick = () => { kbdOn = !kbdOn; applyKbd(); $('scanbox').blur(); $('scanbox').focus(); };
+$('scanbox').addEventListener('keydown', e => { if (e.key === 'Enter') { const v = e.target.value; e.target.value = ''; handleScan(v); } });
+document.addEventListener('click', e => { if (!['TEXTAREA', 'INPUT', 'BUTTON', 'SUMMARY', 'SELECT'].includes(e.target.tagName) && !e.target.closest('button,input,details,select')) focusScan(); });
+setInterval(() => { const a = document.activeElement; if (!a || a === document.body) focusScan(); }, 1500);
+
+/* ---------- camera ---------- */
+let h5 = null, lastCam = '', lastCamT = 0;
+function onCam(t) { const now = Date.now(), same = (t === lastCam && now - lastCamT < 2500); lastCam = t; lastCamT = now; if (!same) handleScan(t); }
+async function stopCam() { if (h5) { try { await h5.stop(); h5.clear(); } catch (e) {} h5 = null; } $('reader').style.display = 'none'; $('cam').textContent = '📷'; }
+$('cam').onclick = async () => {
+  if (h5) { await stopCam(); return; }
+  showTab('scan');
+  if (!window.Html5Qrcode) { alert('Camera scanner could not load (no internet?).'); return; }
+  $('reader').style.display = 'block'; $('cam').textContent = '✕';
+  try { const F = Html5QrcodeSupportedFormats; h5 = new Html5Qrcode('reader', { formatsToSupport: [F.CODE_128, F.EAN_13, F.EAN_8, F.UPC_A, F.CODE_39], useBarCodeDetector: true, verbose: false }); await h5.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 110 } }, onCam, () => {}); }
+  catch (e) { alert('Could not start the camera: ' + e); h5 = null; await stopCam(); }
+};
+
+/* ---------- exports ---------- */
+const qv = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+function download(name, csv) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = name; a.click(); }
+$('export').onclick = () => download('scans-' + DEVICE + '-' + localNow().slice(0, 10) + '.csv', 'time,staff,order,scanned,result\n' + log.map(x => [x.t, x.staff, x.order, x.code, RES[x.r] || x.r].map(qv).join(',')).join('\n'));
+$('exportiss').onclick = () => { const rows = [...issues].sort((a, b) => a.t.localeCompare(b.t)); download('issues-' + localNow().slice(0, 10) + '.csv', 'time,staff,order,type,scanned,item,reason,expected,count,status,cleared_at,cleared_by,note\n' + rows.map(i => [i.t, i.staff, i.order, i.type, i.code, i.label, i.reason, i.expected, i.count || 1, i.status, i.clearedAt || '', i.clearedBy || '', i.note || ''].map(qv).join(',')).join('\n')); };
+
+/* ---------- start ---------- */
+function staffPicker() {
+  const list = SETTINGS.staff || [], sel = $('ovpick');
+  if (!list.length) { sel.style.display = 'none'; return; }
+  sel.innerHTML = '<option value="">— choose your name —</option>' + list.map(n => `<option>${esc(n)}</option>`).join('') + '<option value="__other">Other (type below)</option>';
+  sel.style.display = 'block'; const saved = LS.get('staff', ''); if (list.includes(saved)) { sel.value = saved; $('ovstaff').style.display = 'none'; }
+  sel.onchange = () => { $('ovstaff').style.display = sel.value === '__other' || !sel.value ? 'block' : 'none'; if (sel.value && sel.value !== '__other') $('ovstaff').value = sel.value; };
+}
+$('start').onclick = () => {
+  const sel = $('ovpick'), n = (sel.style.display !== 'none' && sel.value && sel.value !== '__other') ? sel.value : $('ovstaff').value.trim();
+  if (!n) { $('ovstaff').style.display = 'block'; $('ovstaff').focus(); $('ovstaff').style.borderColor = '#ef4444'; return; }
+  $('staff').value = n; LS.set('staff', n);
+  try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  $('overlay').remove(); applyKbd(); focusScan(); sOk();
+};
+$('ovstaff').value = LS.get('staff', '');
+$('ovstaff').addEventListener('keydown', e => { if (e.key === 'Enter') $('start').click(); });
+$('staff').value = LS.get('staff', '');
+$('staff').onchange = () => LS.set('staff', $('staff').value);
+$('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? '🔇' : '🔊'; focusScan(); };
+$('reset').onclick = () => { if (isUnfinished()) { askLeave('__reset'); return; } hideAct(); sessEnd('complete'); cur = null; render(); setStatus('', 'Ready · រង់ចាំស្កេន Order'); focusScan(); };
+$('shipshort').onclick = () => { if (cur && !orderDone()) showResolve(cur.id, null); };
+$('hold').onclick = () => { if (!cur) return; if (isUnfinished()) askLeave('__reset', true); else $('reset').click(); };
+
+render(); renderLog(); renderIssues(); applyKbd(); catChip(); fbState();
+catInit();
+authReady.then(async ok => {
+  fbState(); if (!ok) return;
+  try { const s = await store.get(COL.meta, 'settings'); if (s) SETTINGS = s; staffPicker(); renderIssues(); render(); } catch (e) {}
+  store.watch(COL.meta, 'links', d => { if (d === undefined) return; LINKS = V.linksParse(d && d.txt); LS.set('links', (d && d.txt) || ''); });
+  syncIssues(true); flushLog();
+  // open issues from every phone, live (billed once, then only for issues that change)
+  store.watchQuery(COL.issues, [['status', '==', 'open']], (docs, err) => {
+    if (err || !docs) return;
+    const cloud = new Map(docs.map(d => [d.id, d.data]));
+    cloud.forEach((v, id) => { const i = issues.findIndex(x => x.id === id); if (i < 0) issues.push({ ...v, id, synced: true }); else if (issues[i].status !== 'cleared') { const before = issues[i]; issues[i] = { ...issues[i], ...v, id, synced: true }; if (before.type !== v.type && before.staff === staffName()) managerAnswered(before, issues[i]); } });
+    issues.forEach(i => { if (i.status === 'open' && i.synced && !cloud.has(i.id) && Date.now() - tms(i.t) > 45000) { i.status = 'cleared'; i.clearedAt = i.clearedAt || localNow(); i.clearedBy = i.clearedBy || '(other device)'; } });
+    LS.set('issues', issues); renderIssues();
+  });
+});
+</script>
+</body>
+</html>
