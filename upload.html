@@ -78,103 +78,232 @@ button:active{filter:brightness(.93)}
 #act .yes,#act .no{color:#fff}
 .st.c,.tag.bad,.tag.warn,.tag.ok,button.danger{color:#fff}
 .top,nav{box-shadow:0 1px 0 rgba(0,0,0,.02)}
+/* ---- Upload page: simple layout + language switch (ខ្មែរ / English / both) ---- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overflow-x:hidden}
+button,label,a,summary,select{touch-action:manipulation}
+/* every text has an English (.en) and a Khmer (.km) part; html[data-lang] decides what shows */
+html[data-lang=en] .km,html[data-lang=km] .en{display:none!important}
+.bi{display:block}.bi>.en,.bi>.km{display:block}
+.bi>.km{color:var(--mut);font-weight:400;font-size:.92em;line-height:1.6;margin-top:1px}
+.bl>.km::before{content:' · '}
+html[data-lang=km] .bl>.km::before{content:''}
+html[data-lang=km] .bi>.km{color:inherit;font-size:inherit;font-weight:inherit;margin-top:0}
+html[data-lang=km] body{line-height:1.6}
+button .bi>.km,.filebtn .bi>.km,.box .bt .bi>.km{color:inherit;opacity:.92}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card2)}
+.seg button{border:0;border-radius:0;min-height:36px;padding:0 10px;font-size:13px;background:transparent}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--acc);color:#fff;font-weight:700}
+.uphead{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px}
+.uphead h2{margin:0;font-size:19px;letter-spacing:0;text-transform:none;color:var(--tx)}
+.uphead h2 .bi>.km{font-size:15px;font-weight:700}
+.card h2{text-transform:none;letter-spacing:0;font-size:16px;color:var(--tx)}
+.order-note{background:#eef4ff;border:1px solid #c9dafc;border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+.order-note .en{color:#1e4fc2;font-weight:700}
+html[data-lang=km] .order-note .km{color:#1e4fc2;font-weight:700}
+.how{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;padding:0;list-style:none}
+.how li{flex:1 1 150px;display:flex;gap:8px;align-items:flex-start;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;min-width:0}
+.how li i{font-style:normal;flex:none;width:24px;height:24px;border-radius:50%;background:var(--acc);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px}
+.up-list{display:grid;gap:14px}
+.up{background:#fff;border:1px solid var(--line);border-left:5px solid var(--acc);border-radius:14px;padding:14px 16px;min-width:0}
+.up-top{display:flex;gap:12px;align-items:flex-start}
+.up-num{flex:none;width:38px;height:38px;border-radius:50%;background:var(--acc);color:#fff;font-size:19px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.up-title{font-size:18px;font-weight:700;line-height:1.35;margin:0}
+.up-title .bi>.km{font-size:15px;font-weight:700}
+.up-when{display:inline-block;margin-top:4px;font-size:12px;font-weight:700;background:#eef4ff;color:#1e4fc2;border-radius:99px;padding:2px 10px}
+.qa{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+@media(max-width:640px){.qa{grid-template-columns:1fr}}
+.qa>div{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0;font-size:14px}
+.qa .q{font-size:12px;font-weight:700;color:var(--mut);margin-bottom:3px}
+.path{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:2px}
+.path span{background:#fff;border:1px solid var(--line);border-radius:6px;padding:0 6px;font-weight:700;font-size:13px;white-space:nowrap}
+.pick{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.filebtn{flex:1 1 220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;border:2px dashed var(--acc);background:#f5f8ff;color:#1e4fc2;border-radius:12px;min-height:60px;cursor:pointer;margin-top:0;text-align:center;padding:8px 14px;font-weight:700;font-size:16px}
+.filebtn .bi>.km{font-weight:700}
+.filebtn:hover{background:#eaf1ff}
+.filebtn:focus-within{outline:3px solid #9bbcff;outline-offset:2px}
+.fname{flex:1 1 220px;min-width:0;font-size:14px;color:var(--mut);overflow-wrap:anywhere}
+.fname b{color:var(--tx)}
+.up .res:empty{display:none}
+.up .res{margin-top:10px}
+.up .res button.pri{min-height:54px;font-size:16px;padding:6px 22px;flex:1 1 260px;max-width:100%}
+.res .row button{white-space:normal}
+.box{font-size:14px;overflow-wrap:anywhere}
+.box .bt{display:flex;gap:8px;align-items:flex-start;font-weight:700;font-size:15px}
+.box .bt .ic{flex:none;font-size:18px;line-height:1.3}
+.box .bd{margin-top:4px}
+.box.ok .bt{color:#166534}.box.bad .bt{color:#991b1b}.box.warn .bt{color:#92400e}
+select{max-width:100%}
+.row>input,.row>select{min-width:0;max-width:100%}
+.undo{margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--mut)}
+.undo button{border-color:#d4a5a5;background:#fff5f5;color:#991b1b;font-weight:700}
+.prog.run i{width:40%;animation:slide 1.1s ease-in-out infinite}
+@keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}
+.step2{font-size:13px;font-weight:700;color:var(--mut);margin:10px 0 2px}
+details summary{padding:4px 0}
+#login label.fl{display:block;margin-top:10px;font-size:14px;font-weight:700}
+#login input{margin-top:4px}
+#login button.pri{min-height:50px}
+.top h1 .bl>.km{font-size:14px;font-weight:400;color:var(--mut)}
+html[data-lang=km] .top h1 .bl>.km{font-size:inherit;font-weight:inherit;color:inherit}
+.cell span .bi>.km{font-size:12px}
+@media(max-width:480px){.top{padding:8px 12px}.top h1{font-size:15px}#who{font-size:11px;order:3}#logout{min-height:36px;padding:0 10px}main{padding:4px 12px 60px}.up{padding:12px}.up-title{font-size:17px}.card{padding:12px}}
 </style>
 </head>
 <body>
 <div class="top">
   <span id="dot" class="dot"></span>
-  <h1>VHM · Upload &amp; Fix list</h1>
+  <h1><span class="bl"><span class="en">VHM · Upload &amp; Fix list</span><span class="km">VHM · បញ្ចូលឯកសារ</span></span></h1>
+  <div class="seg" id="langsw" role="group" aria-label="Language · ភាសា"><button data-l="km">ខ្មែរ</button><button data-l="en">English</button><button data-l="both">ខ្មែរ + EN</button></div>
   <span id="who" class="mut"></span>
-  <button id="logout" class="hide">Log out</button>
+  <button id="logout" class="hide"><span class="bl"><span class="en">Log out</span><span class="km">ចាកចេញ</span></span></button>
 </div>
 <main>
   <!-- ===== login ===== -->
   <div id="login" class="card hide">
-    <h2>Manager login</h2>
-    <div class="mut">Only the manager account can upload. Staff phones only read.</div>
-    <input id="lemail" type="email" placeholder="Email" autocomplete="username">
-    <input id="lpass" type="password" placeholder="Password" autocomplete="current-password">
-    <div class="row"><button class="pri" id="lgo" style="flex:1">Log in</button></div>
+    <h2><span class="bi"><span class="en">Manager login</span><span class="km">ចូលប្រើសម្រាប់អ្នកគ្រប់គ្រង</span></span></h2>
+    <div class="mut"><span class="bi"><span class="en">Only the manager account can upload. Staff phones only read.</span><span class="km">មានតែគណនីអ្នកគ្រប់គ្រងទេ ដែលអាចបញ្ចូលឯកសារបាន។ ទូរស័ព្ទបុគ្គលិកគ្រាន់តែមើលប៉ុណ្ណោះ។</span></span></div>
+    <label class="fl" for="lemail"><span class="bl"><span class="en">Email</span><span class="km">អ៊ីមែល</span></span></label>
+    <input id="lemail" type="email" data-ph-en="Email" data-ph-km="អ៊ីមែល" autocomplete="username">
+    <label class="fl" for="lpass"><span class="bl"><span class="en">Password</span><span class="km">ពាក្យសម្ងាត់</span></span></label>
+    <input id="lpass" type="password" data-ph-en="Password" data-ph-km="ពាក្យសម្ងាត់" autocomplete="current-password">
+    <div class="row"><button class="pri" id="lgo" style="flex:1"><span class="bl"><span class="en">Log in</span><span class="km">ចូលប្រើ</span></span></button></div>
     <div id="lmsg" class="mut" style="margin-top:8px"></div>
   </div>
   <div id="nocfg" class="card hide">
-    <h2>Connect Firebase</h2>
-    <div class="mut">This page has no Firebase project yet. Paste the <code>firebaseConfig</code> block of the VHM project (vhm-menu) (Firebase console → Project settings → Your apps).</div>
+    <h2><span class="bi"><span class="en">Connect Firebase</span><span class="km">ភ្ជាប់ Firebase</span></span></h2>
+    <div class="mut"><span class="bi"><span class="en">This page has no Firebase project yet. Paste the <code>firebaseConfig</code> block of the VHM project (vhm-menu) (Firebase console → Project settings → Your apps).</span><span class="km">ទំព័រនេះមិនទាន់មានគម្រោង Firebase ទេ។ សូមបិទភ្ជាប់ <code>firebaseConfig</code> របស់គម្រោង VHM (vhm-menu) (Firebase console → Project settings → Your apps)។</span></span></div>
     <textarea id="cfgtxt" placeholder='const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "...", ... };'></textarea>
-    <div class="row"><button class="pri" id="cfgsave">Save &amp; connect</button><span id="cfgmsg" class="mut"></span></div>
+    <div class="row"><button class="pri" id="cfgsave"><span class="bl"><span class="en">Save &amp; connect</span><span class="km">រក្សាទុក និងភ្ជាប់</span></span></button><span id="cfgmsg" class="mut"></span></div>
   </div>
 
   <div id="app" class="hide">
     <!-- ===== status ===== -->
     <div class="card">
       <div id="reqbanner"></div>
-      <h2>Now online</h2>
+      <h2><span class="bi"><span class="en">What is online now</span><span class="km">ទិន្នន័យដែលកំពុងប្រើនៅលើប្រព័ន្ធឥឡូវនេះ</span></span></h2>
       <div class="sum" id="status"></div>
     </div>
 
     <!-- ===== uploads ===== -->
-    <div class="card">
-      <h2>Upload · always export the FULL list, only the file that changed</h2>
-      <div class="grid3">
-        <div class="slot" id="slot-pok"><h3>1 · PokPok product list</h3><div class="mut">PokPok → Product List → Export (.xlsx). Full list, or search a code and export just those items.</div>
-          <label class="filebtn">Choose file…<input type="file" id="f-pok" accept=".xlsx,.xls,.csv" hidden></label><div id="r-pok"></div></div>
-        <div class="slot" id="slot-vrich"><h3>2 · Vrich stock</h3><div class="mut">Vrich → Stock → Export (.xlsx)</div>
-          <label class="filebtn">Choose file…<input type="file" id="f-vrich" accept=".xlsx,.xls,.csv" hidden></label><div id="r-vrich"></div></div>
-        <div class="slot" id="slot-ord"><h3>3 · Vrich orders</h3><div class="mut">Vrich → Orders → Export (.xlsx, Sheet1 is read)</div>
-          <label class="filebtn">Choose file…<input type="file" id="f-ord" accept=".xlsx,.xls,.csv" hidden></label><div id="r-ord"></div></div>
+    <div class="card" id="uploads">
+      <div class="uphead"><h2><span class="bi"><span class="en">Upload Files</span><span class="km">បញ្ចូលឯកសារ</span></span></h2></div>
+      <div class="order-note"><span class="bi"><span class="en">Upload only the file that changed. Always export the FULL list.</span><span class="km">បញ្ចូលតែឯកសារណាដែលមានការប្តូរ។ ពេល Export ត្រូវយកបញ្ជីទាំងអស់ជានិច្ច។</span></span></div>
+      <ol class="how" aria-label="How to upload">
+        <li><i>1</i><span class="bi"><span class="en">Choose the file</span><span class="km">ជ្រើសរើសឯកសារ</span></span></li>
+        <li><i>2</i><span class="bi"><span class="en">Check the summary</span><span class="km">ពិនិត្យលទ្ធផលសង្ខេប</span></span></li>
+        <li><i>3</i><span class="bi"><span class="en">Press Upload Now</span><span class="km">ចុច «បញ្ចូលឥឡូវនេះ»</span></span></li>
+      </ol>
+      <div class="up-list">
+        <section class="up" id="slot-pok">
+          <div class="up-top"><span class="up-num">1</span><div>
+            <h3 class="up-title"><span class="bi"><span class="en">PokPok Product List</span><span class="km">បញ្ជីផលិតផល PokPok</span></span></h3>
+            <span class="up-when"><span class="bl"><span class="en">When new items or labels are made</span><span class="km">ពេលមានទំនិញ ឬស្លាកថ្មី</span></span></span>
+          </div></div>
+          <div class="qa">
+            <div><div class="q"><span class="bl"><span class="en">WHAT IS THIS?</span><span class="km">នេះសម្រាប់អ្វី?</span></span></div>
+              <span class="bi"><span class="en">The list of PokPok barcodes, so phones know which item each label is.</span><span class="km">បញ្ជីបាកូដ PokPok ដើម្បីឱ្យទូរស័ព្ទស្គាល់ថាស្លាកនីមួយៗជាទំនិញអ្វី។</span></span></div>
+            <div><div class="q"><span class="bl"><span class="en">WHICH FILE?</span><span class="km">ឯកសារណា?</span></span></div>
+              <span class="path"><span>PokPok</span>→<span>Product List</span>→<span>Export</span></span> (.xlsx)
+              <span class="bi"><span class="en">Full list, or search a code and export just those items.</span><span class="km">ទាំងអស់ ឬស្វែងរកកូដ ហើយ Export តែទំនិញទាំងនោះក៏បាន។</span></span></div>
+          </div>
+          <div class="pick">
+            <label class="filebtn"><span class="bi"><span class="en">📂 Choose File</span><span class="km">📂 ជ្រើសរើសឯកសារ</span></span><input type="file" id="f-pok" class="vh" accept=".xlsx,.xls,.csv"></label>
+            <div class="fname" id="n-pok"><span class="bi"><span class="en">No file chosen yet</span><span class="km">មិនទាន់បានជ្រើសរើសឯកសារ</span></span></div>
+          </div>
+          <div class="res" id="r-pok"></div>
+        </section>
+        <section class="up" id="slot-vrich">
+          <div class="up-top"><span class="up-num">2</span><div>
+            <h3 class="up-title"><span class="bi"><span class="en">Vrich Stock List</span><span class="km">បញ្ជីស្តុក Vrich</span></span></h3>
+            <span class="up-when"><span class="bl"><span class="en">When new stock codes are added in Vrich</span><span class="km">ពេលមានកូដស្តុកថ្មីក្នុង Vrich</span></span></span>
+          </div></div>
+          <div class="qa">
+            <div><div class="q"><span class="bl"><span class="en">WHAT IS THIS?</span><span class="km">នេះសម្រាប់អ្វី?</span></span></div>
+              <span class="bi"><span class="en">The list of Vrich stock codes with their colour and size.</span><span class="km">បញ្ជីកូដស្តុក Vrich ជាមួយពណ៌ និងទំហំ។</span></span></div>
+            <div><div class="q"><span class="bl"><span class="en">WHICH FILE?</span><span class="km">ឯកសារណា?</span></span></div>
+              <span class="path"><span>Vrich</span>→<span>Stock</span>→<span>Export</span></span> (.xlsx)
+              <span class="bi"><span class="en">The full stock list.</span><span class="km">យកបញ្ជីស្តុកទាំងអស់។</span></span></div>
+          </div>
+          <div class="pick">
+            <label class="filebtn"><span class="bi"><span class="en">📂 Choose File</span><span class="km">📂 ជ្រើសរើសឯកសារ</span></span><input type="file" id="f-vrich" class="vh" accept=".xlsx,.xls,.csv"></label>
+            <div class="fname" id="n-vrich"><span class="bi"><span class="en">No file chosen yet</span><span class="km">មិនទាន់បានជ្រើសរើសឯកសារ</span></span></div>
+          </div>
+          <div class="res" id="r-vrich"></div>
+        </section>
+        <section class="up" id="slot-ord">
+          <div class="up-top"><span class="up-num">3</span><div>
+            <h3 class="up-title"><span class="bi"><span class="en">Vrich Orders</span><span class="km">បញ្ជីការកុម្ម៉ង់ Vrich</span></span></h3>
+            <span class="up-when"><span class="bl"><span class="en">Every day, before packing</span><span class="km">រៀងរាល់ថ្ងៃ មុនពេលវេចខ្ចប់</span></span></span>
+          </div></div>
+          <div class="qa">
+            <div><div class="q"><span class="bl"><span class="en">WHAT IS THIS?</span><span class="km">នេះសម្រាប់អ្វី?</span></span></div>
+              <span class="bi"><span class="en">The orders staff will scan and pack.</span><span class="km">ការកុម្ម៉ង់ដែលបុគ្គលិកនឹងស្កេន និងវេចខ្ចប់។</span></span></div>
+            <div><div class="q"><span class="bl"><span class="en">WHICH FILE?</span><span class="km">ឯកសារណា?</span></span></div>
+              <span class="path"><span>Vrich</span>→<span>Orders</span>→<span>Export</span></span> (.xlsx)
+              <span class="bi"><span class="en">Only the first sheet (Sheet1) is read.</span><span class="km">ប្រព័ន្ធអានតែសន្លឹកទីមួយ (Sheet1)។</span></span></div>
+          </div>
+          <div class="pick">
+            <label class="filebtn"><span class="bi"><span class="en">📂 Choose File</span><span class="km">📂 ជ្រើសរើសឯកសារ</span></span><input type="file" id="f-ord" class="vh" accept=".xlsx,.xls,.csv"></label>
+            <div class="fname" id="n-ord"><span class="bi"><span class="en">No file chosen yet</span><span class="km">មិនទាន់បានជ្រើសរើសឯកសារ</span></span></div>
+          </div>
+          <div class="res" id="r-ord"></div>
+        </section>
       </div>
     </div>
 
     <!-- ===== to-fix ===== -->
     <div class="card">
-      <h2>To fix · ត្រូវកែ</h2>
-      <div class="tabs"><button id="t-ready" class="on">Orders that can't scan</button><button id="t-cat">Catalog problems</button><button id="t-iss">Missing codes &amp; holds <span id="issn"></span></button><button id="t-staff">Staff accuracy &amp; export</button></div>
+      <h2><span class="bi"><span class="en">To fix</span><span class="km">ត្រូវកែ</span></span></h2>
+      <div class="tabs"><button id="t-ready" class="on"><span class="bl"><span class="en">Orders that can't scan</span><span class="km">ការកុម្ម៉ង់ស្កេនមិនបាន</span></span></button><button id="t-cat"><span class="bl"><span class="en">Catalog problems</span><span class="km">បញ្ហាបញ្ជីទំនិញ</span></span></button><button id="t-iss"><span class="bl"><span class="en">Missing codes &amp; holds</span><span class="km">កូដបាត់ និងការផ្អាក</span></span> <span id="issn"></span></button><button id="t-staff"><span class="bl"><span class="en">Staff accuracy &amp; export</span><span class="km">ភាពត្រឹមត្រូវបុគ្គលិក និង Export</span></span></button></div>
       <div id="p-ready"></div>
       <div id="p-cat" class="hide"></div>
       <div id="p-iss" class="hide"></div>
       <div id="p-staff" class="hide">
-        <div class="row"><input id="sdate" type="date"><button class="pri" id="sload">Load</button><span class="mut" id="sinfo">Reads one document per scanned order (about 4,000 for a full day). A finished day is saved as a summary, so opening it again costs 1 read.</span></div>
+        <div class="row"><input id="sdate" type="date"><button class="pri" id="sload"><span class="bl"><span class="en">Load</span><span class="km">បង្ហាញ</span></span></button><span class="mut" id="sinfo"><span class="bi"><span class="en">Reads one document per scanned order (about 4,000 for a full day). A finished day is saved as a summary, so opening it again costs 1 read.</span><span class="km">អានឯកសារមួយ ក្នុងមួយការកុម្ម៉ង់ដែលបានស្កេន (ប្រហែល 4,000 សម្រាប់មួយថ្ងៃពេញ)។ ថ្ងៃដែលចប់ហើយត្រូវរក្សាទុកជាសង្ខេប ដូច្នេះបើកម្តងទៀតអានតែ 1។</span></span></span></div>
         <div id="sres"></div>
-        <h3 style="margin-top:18px">⬇ Export scans · which orders went through the manager</h3>
-        <div class="mut">One row per scanned order: who scanned it, the result, the scan counts, and every manager / supervisor step (ship short approved or rejected, technical quirk, dispute, PIN approval). Reads about one document per scanned order.</div>
-        <div class="row"><span class="mut">From</span><input id="xfrom" type="date"><span class="mut">to</span><input id="xto" type="date"><button class="pri" id="xgo">Load</button><span class="mut" id="xinfo"></span></div>
+        <h3 style="margin-top:18px"><span class="bi"><span class="en">⬇ Export scans · which orders went through the manager</span><span class="km">⬇ Export ការស្កេន · ការកុម្ម៉ង់ណាខ្លះឆ្លងកាត់អ្នកគ្រប់គ្រង</span></span></h3>
+        <div class="mut"><span class="bi"><span class="en">One row per scanned order: who scanned it, the result, the scan counts, and every manager / supervisor step (ship short approved or rejected, technical quirk, dispute, PIN approval). Reads about one document per scanned order.</span><span class="km">មួយជួរ ក្នុងមួយការកុម្ម៉ង់ដែលបានស្កេន៖ អ្នកស្កេន លទ្ធផល ចំនួនស្កេន និងរាល់ជំហានរបស់អ្នកគ្រប់គ្រង / អ្នកត្រួតពិនិត្យ (អនុម័ត ឬបដិសេធការផ្ញើខ្វះ បញ្ហាបច្ចេកទេស ការជំទាស់ ការអនុម័តដោយ PIN)។ អានប្រហែលមួយឯកសារ ក្នុងមួយការកុម្ម៉ង់។</span></span></div>
+        <div class="row"><span class="mut"><span class="bl"><span class="en">From</span><span class="km">ពី</span></span></span><input id="xfrom" type="date"><span class="mut"><span class="bl"><span class="en">to</span><span class="km">ដល់</span></span></span><input id="xto" type="date"><button class="pri" id="xgo"><span class="bl"><span class="en">Load</span><span class="km">បង្ហាញ</span></span></button><span class="mut" id="xinfo"></span></div>
         <div id="xres"></div>
       </div>
     </div>
 
     <!-- ===== settings ===== -->
     <div class="card">
-      <h2>Same words · ពាក្យដូចគ្នា</h2>
-      <div class="mut">Colour/size words that mean the same thing in PokPok and Vrich. One group per line, separated by <code>=</code>, e.g. <code>ស = សរ</code>. Phones use the list at once; the "Orders that can't scan" list is re-checked.</div>
+      <h2><span class="bi"><span class="en">Same words</span><span class="km">ពាក្យដូចគ្នា</span></span></h2>
+      <div class="mut"><span class="bi"><span class="en">Colour/size words that mean the same thing in PokPok and Vrich. One group per line, separated by <code>=</code>, e.g. <code>ស = សរ</code>. Phones use the list at once; the "Orders that can't scan" list is re-checked.</span><span class="km">ពាក្យពណ៌/ទំហំ ដែលមានន័យដូចគ្នាក្នុង PokPok និង Vrich។ មួយក្រុមក្នុងមួយបន្ទាត់ ខណ្ឌដោយ <code>=</code> ឧ. <code>ស = សរ</code>។ ទូរស័ព្ទប្រើភ្លាមៗ ហើយបញ្ជី «ការកុម្ម៉ង់ស្កេនមិនបាន» ត្រូវពិនិត្យឡើងវិញ។</span></span></div>
       <textarea id="synl" style="min-height:70px"></textarea>
-      <div class="row"><button id="synsave">Save same words</button><span id="synmsg" class="mut"></span></div>
+      <div class="row"><button id="synsave"><span class="bl"><span class="en">Save same words</span><span class="km">រក្សាទុកពាក្យដូចគ្នា</span></span></button><span id="synmsg" class="mut"></span></div>
     </div>
 
     <div class="card">
-      <h2>💲 Price check · ពិនិត្យតម្លៃ</h2>
-      <div class="mut">ON: a scanned PokPok label counts only if its PokPok <b>Price</b> is the same as the price of the line in the Vrich <b>order</b> (per piece: Vrich's Price ÷ Quantity). Wrong price = red <i>WRONG PRICE</i> on the phone, not counted; staff take the right item, or a supervisor approves / ⚡ quirk. Items with no price (empty or 0) are not checked, and neither are orders uploaded before this version — upload today's order file again to add the prices. Phones switch at once.</div>
-      <div class="row"><select id="pricemode"><option value="on">ON — wrong price is not counted</option><option value="off">OFF</option></select><button id="pricesave">Save</button><span id="pricemsg" class="mut"></span></div>
+      <h2><span class="bi"><span class="en">💲 Price check</span><span class="km">💲 ពិនិត្យតម្លៃ</span></span></h2>
+      <div class="mut"><span class="bi"><span class="en">ON: a scanned PokPok label counts only if its PokPok <b>Price</b> is the same as the price of the line in the Vrich <b>order</b> (per piece: Vrich's Price ÷ Quantity). Wrong price = red <i>WRONG PRICE</i> on the phone, not counted; staff take the right item, or a supervisor approves / ⚡ quirk. Items with no price (empty or 0) are not checked, and neither are orders uploaded before this version — upload today's order file again to add the prices. Phones switch at once.</span><span class="km">បើក (ON)៖ ស្លាក PokPok ដែលស្កេន រាប់បានតែពេល <b>តម្លៃ</b> PokPok ដូចតម្លៃក្នុង<b>ការកុម្ម៉ង់</b> Vrich (តម្លៃមួយដុំ = Price ÷ Quantity)។ តម្លៃខុស = ទូរស័ព្ទបង្ហាញក្រហម <i>WRONG PRICE</i> ហើយមិនរាប់ទេ។ បុគ្គលិកយកទំនិញត្រូវ ឬអ្នកត្រួតពិនិត្យអនុម័ត / ⚡។ ទំនិញគ្មានតម្លៃ (ទទេ ឬ 0) មិនពិនិត្យទេ។ ទូរស័ព្ទប្តូរភ្លាមៗ។</span></span></div>
+      <div class="row"><select id="pricemode"><option value="on" data-tx-en="ON — wrong price is not counted" data-tx-km="បើក — តម្លៃខុសមិនរាប់">ON — wrong price is not counted</option><option value="off" data-tx-en="OFF" data-tx-km="បិទ">OFF</option></select><button id="pricesave"><span class="bl"><span class="en">Save</span><span class="km">រក្សាទុក</span></span></button><span id="pricemsg" class="mut"></span></div>
     </div>
 
     <div class="card">
-      <h2>Staff &amp; supervisors</h2>
-      <div class="mut">Staff names appear as a list on the phones. A supervisor PIN approves one item in one order when the catalog cannot be fixed straight away. Use 6 digits or more.</div>
-      <h3>Staff names (one per line)</h3>
+      <h2><span class="bi"><span class="en">Staff &amp; supervisors</span><span class="km">បុគ្គលិក និងអ្នកត្រួតពិនិត្យ</span></span></h2>
+      <div class="mut"><span class="bi"><span class="en">Staff names appear as a list on the phones. A supervisor PIN approves one item in one order when the catalog cannot be fixed straight away. Use 6 digits or more.</span><span class="km">ឈ្មោះបុគ្គលិកបង្ហាញជាបញ្ជីលើទូរស័ព្ទ។ PIN អ្នកត្រួតពិនិត្យ អនុម័តទំនិញមួយក្នុងការកុម្ម៉ង់មួយ ពេលមិនអាចកែបញ្ជីទំនិញភ្លាមបាន។ ប្រើលេខ 6 ខ្ទង់ ឬច្រើនជាងនេះ។</span></span></div>
+      <h3><span class="bl"><span class="en">Staff names (one per line)</span><span class="km">ឈ្មោះបុគ្គលិក (មួយបន្ទាត់មួយឈ្មោះ)</span></span></h3>
       <textarea id="staffl"></textarea>
-      <div class="row"><button id="staffsave">Save staff list</button><span id="staffmsg" class="mut"></span></div>
-      <h3>Supervisors</h3>
+      <div class="row"><button id="staffsave"><span class="bl"><span class="en">Save staff list</span><span class="km">រក្សាទុកបញ្ជីបុគ្គលិក</span></span></button><span id="staffmsg" class="mut"></span></div>
+      <h3><span class="bl"><span class="en">Supervisors</span><span class="km">អ្នកត្រួតពិនិត្យ</span></span></h3>
       <div id="suplist"></div>
-      <div class="row"><input id="supname" placeholder="Supervisor name"><input id="suppin" type="password" inputmode="numeric" placeholder="New PIN (6+ digits)"><button id="supadd">Add / change PIN</button><span id="supmsg" class="mut"></span></div>
+      <div class="row"><input id="supname" data-ph-en="Supervisor name" data-ph-km="ឈ្មោះអ្នកត្រួតពិនិត្យ"><input id="suppin" type="password" inputmode="numeric" data-ph-en="New PIN (6+ digits)" data-ph-km="PIN ថ្មី (6 ខ្ទង់ឡើង)"><button id="supadd"><span class="bl"><span class="en">Add / change PIN</span><span class="km">បន្ថែម / ប្តូរ PIN</span></span></button><span id="supmsg" class="mut"></span></div>
     </div>
 
     <div class="card">
-      <h2>Housekeeping</h2>
-      <div class="mut">Orders, scan logs, cleared issues and approvals older than <b id="keepd"></b> days are deleted automatically once a day after an order upload. Open issues are never deleted.</div>
-      <div class="row"><button id="cleanup">Run clean-up now</button><span id="cleanmsg" class="mut"></span></div>
-      <details><summary>Firebase project</summary>
+      <h2><span class="bi"><span class="en">Housekeeping</span><span class="km">សម្អាតទិន្នន័យ</span></span></h2>
+      <div class="mut"><span class="bi"><span class="en">Orders, scan logs, cleared issues and approvals older than <b class="keepd"></b> days are deleted automatically once a day after an order upload. Open issues are never deleted.</span><span class="km">ការកុម្ម៉ង់ កំណត់ត្រាស្កេន បញ្ហាដែលបានបិទ និងការអនុម័ត ចាស់ជាង <b class="keepd"></b> ថ្ងៃ ត្រូវលុបដោយស្វ័យប្រវត្តិ ម្តងក្នុងមួយថ្ងៃ ក្រោយបញ្ចូលការកុម្ម៉ង់។ បញ្ហាដែលនៅបើក មិនត្រូវលុបទេ។</span></span><b id="keepd" hidden></b></div>
+      <div class="row"><button id="cleanup"><span class="bl"><span class="en">Run clean-up now</span><span class="km">សម្អាតឥឡូវនេះ</span></span></button><span id="cleanmsg" class="mut"></span></div>
+      <details><summary><span class="bl"><span class="en">Firebase project</span><span class="km">គម្រោង Firebase</span></span></summary>
         <div class="mut" id="cfginfo" style="margin-top:6px"></div>
-        <textarea id="cfgtxt2" placeholder="Paste a different firebaseConfig"></textarea>
-        <div class="row"><button id="cfgsave2">Save &amp; reload</button><button id="cfgreset">Back to built-in</button></div>
+        <textarea id="cfgtxt2" data-ph-en="Paste a different firebaseConfig" data-ph-km="បិទភ្ជាប់ firebaseConfig ផ្សេង"></textarea>
+        <div class="row"><button id="cfgsave2"><span class="bl"><span class="en">Save &amp; reload</span><span class="km">រក្សាទុក និងបើកឡើងវិញ</span></span></button><button id="cfgreset"><span class="bl"><span class="en">Back to built-in</span><span class="km">ត្រឡប់ទៅលំនាំដើម</span></span></button></div>
       </details>
     </div>
   </div>
@@ -422,14 +551,47 @@ const store = V.makeStore(CFG);
 const ST = { loose: new Map(), links: new Map(), user: null, meta: null, report: null, settings: null, cat: { pok: null, vrich: null }, issues: [] };
 const fmt = n => (n || 0).toLocaleString('en-US');
 
+/* ---------- language: ខ្មែរ / English / both — remembered on this device ---------- */
+let LANG = V.LS.get('lang', 'both'); if (!['en', 'km', 'both'].includes(LANG)) LANG = 'both';
+// en / km are trusted HTML: callers escape any file or database text with esc()
+const bi = (en, km) => `<span class="bi"><span class="en">${en}</span><span class="km">${km}</span></span>`;      // two lines
+const bl = (en, km) => `<span class="bl"><span class="en">${en}</span><span class="km">${km}</span></span>`;      // one line
+const L = (en, km) => LANG === 'en' ? en : LANG === 'km' ? km : en + ' · ' + km;                                // plain text (placeholders, tooltips)
+const Lc = (en, km) => LANG === 'en' ? en : LANG === 'km' ? km : en + '\n\n' + km;                              // confirm() / alert()
+const say = (el, en, km) => { el = typeof el === 'string' ? $(el) : el; if (el) el.innerHTML = en || km ? bl(esc(en), esc(km == null ? en : km)) : ''; };
+function setLang(l) {
+  LANG = l; V.LS.set('lang', l);
+  document.documentElement.dataset.lang = l; document.documentElement.lang = l === 'en' ? 'en' : 'km';
+  document.querySelectorAll('[data-ph-en]').forEach(e => { e.placeholder = L(e.dataset.phEn, e.dataset.phKm); });
+  document.querySelectorAll('[data-tx-en]').forEach(e => { e.textContent = L(e.dataset.txEn, e.dataset.txKm); });
+  document.querySelectorAll('#langsw [data-l]').forEach(b => b.classList.toggle('on', b.dataset.l === l));
+}
+document.querySelectorAll('#langsw [data-l]').forEach(b => b.onclick = () => setLang(b.dataset.l));
+setLang(LANG);
+
 /* ---------- small UI helpers ---------- */
-const cell = (n, label, cls) => `<div class="cell ${cls || ''}"><b>${typeof n === 'number' ? fmt(n) : esc(n)}</b><span>${esc(label)}</span></div>`;
+// a label may carry its Khmer after "\n": "items\nមុខទំនិញ"
+const cell = (n, label, cls) => { const [en, km] = String(label).split('\n'); return `<div class="cell ${cls || ''}"><b>${typeof n === 'number' ? fmt(n) : esc(n)}</b><span>${km ? bi(esc(en), esc(km)) : esc(en)}</span></div>`; };
 const box = (cls, html) => `<div class="box ${cls}">${html}</div>`;
+// result box: icon + short bilingual title + optional detail (trusted HTML, usually bi(...))
+const msg = (cls, en, km, detail) => `<div class="box ${cls}"><div class="bt"><span class="ic">${{ ok: '✅', bad: '❌', warn: '⚠️' }[cls] || ''}</span>${bi(esc(en), esc(km))}</div>${detail ? '<div class="bd">' + detail + '</div>' : ''}</div>`;
+const biErr = t => { const [en, km] = String(t).split('\n'); return km ? bi(esc(en), esc(km)) : esc(en); };
 function csvDownload(name, header, rows) {
   const c = v => { let s = v == null ? '' : String(v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + [header, ...rows].map(r => r.map(c).join(',')).join('\r\n')], { type: 'text/csv' })); a.download = name; a.click();
 }
-const nice = e => { const m = (e && (e.code || e.message)) || String(e); return /permission/i.test(m) ? 'Firestore refused this (permission denied). Is this the manager account, and are the rules published?' : m; };
+const nice = e => { const m = (e && (e.code || e.message)) || String(e); return /permission/i.test(m) ? L('Firestore refused this (permission denied). Is this the manager account, and are the rules published?', 'ប្រព័ន្ធមិនអនុញ្ញាត — សូមពិនិត្យថាចូលប្រើដោយគណនីអ្នកគ្រប់គ្រង ហើយច្បាប់ (rules) ត្រូវបានផ្សព្វផ្សាយ។') : m; };
+// what a chosen file really is (only used to explain a refused file — never to accept or refuse one)
+async function fileKind(f) {
+  try {
+    if (!f.size) return 'empty';
+    const b = new Uint8Array(await f.slice(0, 8).arrayBuffer());
+    if (b[0] === 0x50 && b[1] === 0x4B) return 'zip';                       // .xlsx
+    if (b[0] === 0xD0 && b[1] === 0xCF && b[2] === 0x11 && b[3] === 0xE0) return 'ole';      // old .xls
+    if (new TextDecoder().decode(b).replace(/^﻿/, '').trim().startsWith('<')) return 'markup';   // HTML/XML ".xls" exports
+    return /\.csv$/i.test(f.name) ? 'csv' : 'other';
+  } catch (e) { return 'other'; }
+}
 
 /* ---------- reading Excel ---------- */
 const cellTxt = v => v == null ? '' : typeof v === 'number' ? (Number.isInteger(v) ? String(v) : String(v)) : v instanceof Date ? v.toISOString() : String(v);
@@ -493,8 +655,8 @@ const DEF = {
 /* ---------- 1) PokPok product list (same cleaning rules as the Catalog Cleaner) ---------- */
 function analyzePok(rows) {
   const h = detectHeader(rows, DEF.pok);
-  if (!h.ok) return { err: 'This does not look like the PokPok product list (missing column: ' + h.missing.join(', ') + ').' };
-  if (looksLikeOrders(rows, h.row)) return { err: 'This is an order export — use slot 3.' };
+  if (!h.ok) return { err: 'This does not look like the PokPok product list (missing column: ' + h.missing.join(', ') + ').\nនេះមិនមែនជាបញ្ជីផលិតផល PokPok ទេ (ខ្វះជួរឈរ៖ ' + h.missing.join(', ') + ')។' };
+  if (looksLikeOrders(rows, h.row)) return { err: 'This is an order export — use box 3 (Vrich Orders).\nនេះជាឯកសារការកុម្ម៉ង់ — សូមប្រើប្រអប់ទី 3 (បញ្ជីការកុម្ម៉ង់ Vrich)។' };
   const m = h.map, g = (r, f) => m[f] == null ? '' : clean(cellTxt(r[m[f]]));
   const items = [], excluded = [];
   for (let i = h.row + 1; i < rows.length; i++) {
@@ -526,8 +688,8 @@ function pokWarnings(recs) {
 /* ---------- 2) Vrich stock ---------- */
 function analyzeVrich(rows) {
   const h = detectHeader(rows, DEF.vrich);
-  if (!h.ok) return { err: 'This does not look like the Vrich stock export (missing column: ' + h.missing.join(', ') + ').' };
-  if (looksLikeOrders(rows, h.row)) return { err: 'This is an order export — use slot 3.' };
+  if (!h.ok) return { err: 'This does not look like the Vrich stock export (missing column: ' + h.missing.join(', ') + ').\nនេះមិនមែនជាបញ្ជីស្តុក Vrich ទេ (ខ្វះជួរឈរ៖ ' + h.missing.join(', ') + ')។' };
+  if (looksLikeOrders(rows, h.row)) return { err: 'This is an order export — use box 3 (Vrich Orders).\nនេះជាឯកសារការកុម្ម៉ង់ — សូមប្រើប្រអប់ទី 3 (បញ្ជីការកុម្ម៉ង់ Vrich)។' };
   const m = h.map, g = (r, f) => m[f] == null ? '' : clean(cellTxt(r[m[f]]));
   const seen = new Map(), excluded = []; let merged = 0;
   for (let i = h.row + 1; i < rows.length; i++) {
@@ -555,7 +717,7 @@ function ymd(v) {
 }
 function analyzeOrders(rows) {
   const h = detectHeader(rows, DEF.ord);
-  if (!h.ok) return { err: 'This does not look like the Vrich order export (missing column: ' + h.missing.join(', ') + ').' };
+  if (!h.ok) return { err: 'This does not look like the Vrich order export (missing column: ' + h.missing.join(', ') + ').\nនេះមិនមែនជាបញ្ជីការកុម្ម៉ង់ Vrich ទេ (ខ្វះជួរឈរ៖ ' + h.missing.join(', ') + ')។' };
   const m = h.map, g = (r, f) => m[f] == null ? '' : clean(cellTxt(r[m[f]]));
   const orders = {}, bad = []; let lines = 0, prices = 0;
   for (let i = h.row + 1; i < rows.length; i++) {
@@ -600,11 +762,11 @@ async function publishCatalog(kind, recs, file, extraMeta) {
 }
 
 /* ---------- 💲 prices ---------- */
-function priceBox(col, extra) {
-  if (!col) return box('warn', '💲 No <b>Price</b> column found in this file — the price check cannot use it.');
-  let t = `💲 Price column: <b>${esc(col)}</b>` + (extra || '');
-  if (ST.settings && ST.settings.price === 'off') t += '<br>The price check is OFF (Settings).';
-  return box('ok', t);
+function priceBox(col, extra, extraKm) {
+  if (!col) return box('warn', bi('💲 No <b>Price</b> column found in this file — the price check cannot use it.', '💲 រកមិនឃើញជួរឈរ <b>Price</b> ក្នុងឯកសារនេះទេ — មិនអាចពិនិត្យតម្លៃបានទេ។'));
+  const off = ST.settings && ST.settings.price === 'off';
+  return box('ok', bi(`💲 Price column: <b>${esc(col)}</b>` + (extra || '') + (off ? '<br>The price check is OFF (Settings).' : ''),
+    `💲 ជួរឈរតម្លៃ៖ <b>${esc(col)}</b>` + (extraKm || '') + (off ? '<br>ការពិនិត្យតម្លៃត្រូវបានបិទ (OFF)។' : '')));
 }
 
 /* ---------- order readiness: can every ordered line be scanned with a PokPok label? ---------- */
@@ -719,18 +881,18 @@ async function syncDays(only) {
   drawReady(); drawStatus();
 }
 async function openDay(d) {
-  RD.sel = d; ST.report = null; $('p-ready').innerHTML = dayChips() + '<div class="mut">Loading ' + esc(d) + '…</div>'; wireDayChips();
+  RD.sel = d; ST.report = null; $('p-ready').innerHTML = dayChips() + '<div class="mut">' + bl('Loading ' + esc(d) + '…', 'កំពុងផ្ទុក ' + esc(d) + '…') + '</div>'; wireDayChips();
   const pok = await currentCatalog('pok').catch(() => null), doc = await getDay(d);
   if (doc && pok) { ST.report = checkDay(doc, pok.records); ST.report.stamp = rdStamp(); const row = RD.list.find(o => o.d === d); if (row && row.stamp !== rdStamp()) { Object.assign(row, rowOf(doc, ST.report)); saveDayIndex().catch(() => {}); } }
   drawReady(); drawStatus();
 }
 function dayChips() {
-  const st = rdStamp(), pick = `<div class="row"><span class="mut">Order date</span><input type="date" id="daypick" value="${esc(RD.sel || V.today())}" max="${esc(V.today())}"><span class="mut" id="daypickmsg"></span></div>`;
+  const st = rdStamp(), pick = `<div class="row"><span class="mut">${bl('Order date', 'ថ្ងៃការកុម្ម៉ង់')}</span><input type="date" id="daypick" value="${esc(RD.sel || V.today())}" max="${esc(V.today())}"><span class="mut" id="daypickmsg"></span></div>`;
   if (!RD.list.length) return pick;
   const shown = RD.list.slice(0, 7); if (RD.sel && !shown.some(o => o.d === RD.sel)) { const x = RD.list.find(o => o.d === RD.sel); if (x) shown.push(x); }
   return pick +
-    `<div class="tabs" id="daychips" style="flex-wrap:wrap">${shown.map(o => `<button data-day="${esc(o.d)}" class="${o.d === RD.sel ? 'on' : ''}" title="${esc(o.orders + ' orders · ' + o.lines + ' lines')}">${esc(o.d.slice(5))} · ${o.stamp === st ? (o.bad ? '<b style="color:#b91c1c">' + fmt(o.bad) + ' ✗</b>' : '✓ 0') : '⟳'}</button>`).join('')}</div>` +
-    `<div class="row"><button id="daysync">⟳ Re-check all days</button><span class="mut">${esc(RD.msg || 'Each day is checked with the current PokPok list, Same words and 🔗 links.')}</span></div>`;
+    `<div class="tabs" id="daychips" style="flex-wrap:wrap">${shown.map(o => `<button data-day="${esc(o.d)}" class="${o.d === RD.sel ? 'on' : ''}" title="${esc(L(o.orders + ' orders · ' + o.lines + ' lines', o.orders + ' ការកុម្ម៉ង់ · ' + o.lines + ' ជួរ'))}">${esc(o.d.slice(5))} · ${o.stamp === st ? (o.bad ? '<b style="color:#b91c1c">' + fmt(o.bad) + ' ✗</b>' : '✓ 0') : '⟳'}</button>`).join('')}</div>` +
+    `<div class="row"><button id="daysync">${bl('⟳ Re-check all days', '⟳ ពិនិត្យថ្ងៃទាំងអស់ឡើងវិញ')}</button><span class="mut">${RD.msg ? esc(RD.msg) : bl('Each day is checked with the current PokPok list, Same words and 🔗 links.', 'ថ្ងៃនីមួយៗត្រូវពិនិត្យជាមួយបញ្ជី PokPok ពាក្យដូចគ្នា និង 🔗 តំណ ដែលកំពុងប្រើ។')}</span></div>`;
 }
 function wireDayChips() {
   document.querySelectorAll('#daychips [data-day]').forEach(b => b.onclick = () => openDay(b.dataset.day));
@@ -740,19 +902,19 @@ function wireDayChips() {
 // a date with no saved line list: orders uploaded before day-by-day lists existed can be rebuilt from the orders online
 async function pickDay(d) {
   if (RD.list.some(o => o.d === d)) { openDay(d); return; }
-  const msg = $('daypickmsg'); msg.textContent = 'Looking for orders of ' + d + '…';
+  const msg = $('daypickmsg'); say(msg, 'Looking for orders of ' + d + '…', 'កំពុងរកការកុម្ម៉ង់ថ្ងៃ ' + d + '…');
   let ids = [];
   try { const x = await store.get(COL.idx, d), o = V.idxMap(x && x.o); ids = Object.keys(o).filter(id => o[id].st !== 'c'); } catch (e) { msg.textContent = nice(e); return; }
-  if (!ids.length) { msg.textContent = 'No orders uploaded for ' + d + ' — upload that day\'s Vrich order export (slot 3).'; return; }
-  msg.innerHTML = `${fmt(ids.length)} order(s) of ${esc(d)} are online but have no list yet. <button id="daybuild" class="pri" style="min-height:32px">Build the list (${fmt(ids.length)} reads)</button>`;
+  if (!ids.length) { say(msg, 'No orders uploaded for ' + d + ' — upload that day\'s Vrich order export (box 3).', 'មិនមានការកុម្ម៉ង់ថ្ងៃ ' + d + ' ទេ — សូមបញ្ចូលឯកសារការកុម្ម៉ង់ Vrich នៃថ្ងៃនោះ (ប្រអប់ទី 3)។'); return; }
+  msg.innerHTML = bl(`${fmt(ids.length)} order(s) of ${esc(d)} are online but have no list yet.`, `មាន ${fmt(ids.length)} ការកុម្ម៉ង់ថ្ងៃ ${esc(d)} នៅលើប្រព័ន្ធ តែមិនទាន់មានបញ្ជី។`) + ` <button id="daybuild" class="pri" style="min-height:32px">${bl('Build the list (' + fmt(ids.length) + ' reads)', 'បង្កើតបញ្ជី (អាន ' + fmt(ids.length) + ')')}</button>`;
   $('daybuild').onclick = async () => {
     $('daybuild').disabled = true; const orders = {}; let n = 0;
     try {
-      const say = t => { const el = $('daypickmsg'); if (el) el.textContent = t; };      // the panel may be redrawn meanwhile
+      const sayN = t => { const el = $('daypickmsg'); if (el) say(el, `Building ${d}: reading orders… ${t} — keep this page open`, `កំពុងបង្កើត ${d}៖ អានការកុម្ម៉ង់… ${t} — កុំបិទទំព័រនេះ`); };      // the panel may be redrawn meanwhile
       for (let i = 0; i < ids.length; i += 100) {
         const part = await Promise.all(ids.slice(i, i + 100).map(id => store.get(COL.orders, id).then(doc => [id, doc])));
         part.forEach(([id, doc]) => { if (doc && doc.items && doc.st !== 'c') orders[id] = { d, items: doc.items }; });
-        n += part.length; say(`Building ${d}: reading orders… ${fmt(n)} / ${fmt(ids.length)} — keep this page open`);
+        n += part.length; sayN(`${fmt(n)} / ${fmt(ids.length)}`);
       }
       await saveDays({ dates: [d], A: { orders }, gone: [], f: { name: '(built from the orders online)' } }, false);
       openDay(d);
@@ -761,17 +923,36 @@ async function pickDay(d) {
 }
 
 /* ---------- upload slot UI ---------- */
+/* Every message on the upload boxes is English + Khmer (the switch at the top chooses what shows). The reading,
+   checking and saving code below is the same as before — only the text it shows was rewritten. */
 const SL = { pok: {}, vrich: {}, ord: {} };
 function slotMsg(k, html) { $('r-' + k).innerHTML = html; }
-function progress(k, txt) { slotMsg(k, box('warn', esc(txt) + '<div class="prog"><i style="width:60%"></i></div>')); }
+function progress(k, txt) { const [en, km] = String(txt).split('\n'); slotMsg(k, `<div class="box warn"><div class="bt"><span class="ic">⏳</span>${bi(esc(en), esc(km || en))}</div><div class="prog run"><i></i></div></div>`); }
+// the chosen file's name, shown next to the Choose File button (capture phase: runs before the upload handler clears the input)
+['pok', 'vrich', 'ord'].forEach(k => $('slot-' + k).addEventListener('change', e => {
+  const f = e.target && e.target.files && e.target.files[0]; if (!f) return;
+  $('n-' + k).innerHTML = bi('Selected file:', 'ឯកសារដែលបានជ្រើសរើស៖') + `<b>📄 ${esc(f.name)}</b>`;
+}, true));
+const step2 = () => `<div class="step2">${bl('Check, then press Upload Now', 'ពិនិត្យ រួចចុច «បញ្ចូលឥឡូវនេះ»')}</div>`;
+const upBtn = (id, en, km, extra) => `<div class="row"><button class="pri" id="${id}"${extra || ''}>${bi('⬆ Upload Now · ' + en, '⬆ បញ្ចូលឥឡូវនេះ · ' + km)}</button></div>`;
+const readFail = err => msg('bad', 'Could not read this file', 'មិនអាចអានឯកសារនេះបានទេ', esc(err.message) + bi('', 'សូមពិនិត្យថាជាឯកសារ .xlsx ត្រឹមត្រូវ ហើយសាកម្តងទៀត។'));
+const saveFail = err => msg('bad', 'Upload failed — nothing was saved', 'បញ្ចូលមិនបានសម្រេច — គ្មានអ្វីត្រូវបានរក្សាទុកទេ', esc(nice(err)) + bi('', 'សូមពិនិត្យអ៊ីនធឺណិត ហើយសាកម្តងទៀត។'));
+// a refused file: say plainly when it is not a spreadsheet at all, otherwise which columns are missing
+async function wrongFile(f, t) {
+  const k = await fileKind(f);
+  if (k === 'empty') return msg('bad', 'This file is empty', 'ឯកសារនេះទទេ', bi('Export the list again and choose the new file.', 'សូម Export បញ្ជីម្តងទៀត ហើយជ្រើសរើសឯកសារថ្មី។'));
+  if (k === 'other') return msg('bad', 'This is not an Excel file', 'នេះមិនមែនជាឯកសារ Excel ទេ', bi(`“${esc(f.name)}” is not a spreadsheet. Choose the .xlsx file you exported (see “Which file?” above).`, `«${esc(f.name)}» មិនមែនជាតារាង Excel ទេ។ សូមជ្រើសរើសឯកសារ .xlsx ដែលបាន Export (មើល «ឯកសារណា?» ខាងលើ)។`));
+  return msg('bad', 'Wrong file', 'ឯកសារខុស', biErr(t));
+}
+const fileErr = (f, err) => fileKind(f).then(k => k === 'other' || k === 'empty' ? wrongFile(f, '') : readFail(err));
 
 $('f-pok').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  progress('pok', 'Reading ' + f.name + ' …');
+  progress('pok', 'Reading ' + f.name + ' …\nកំពុងអានឯកសារ ' + f.name + ' …');
   try {
     const { rows } = await readRows(f); const A = analyzePok(rows);
-    if (A.err) { slotMsg('pok', box('bad', esc(A.err))); return; }
-    let prev = null; try { prev = await currentCatalog('pok'); } catch (err) { slotMsg('pok', box('bad', 'Could not read the current catalog: ' + esc(err.message))); return; }
+    if (A.err) { slotMsg('pok', await wrongFile(f, A.err)); return; }
+    let prev = null; try { prev = await currentCatalog('pok'); } catch (err) { slotMsg('pok', msg('bad', 'Could not read the list that is online now', 'មិនអាចអានបញ្ជីដែលមាននៅលើប្រព័ន្ធបានទេ', esc(err.message))); return; }
     // a small file next to a big online list = a PokPok search export: only add/update those items, keep everything else
     let partial = null;
     if (prev && prev.count && A.recs.length < prev.count * (1 - V.SHRINK)) {
@@ -783,7 +964,7 @@ $('f-pok').onchange = async e => {
     let fixed = null;
     if (ST.report && ST.report.problems && ST.report.problems.length) { const lines = linesFromProblems(ST.report.problems), R = readiness(lines, A.recs); fixed = { before: lines.length, still: R.problems.length, R }; }
     SL.pok = { f, A, D, prev, fixed, partial }; drawPokSummary();
-  } catch (err) { slotMsg('pok', box('bad', 'Could not read that file: ' + esc(err.message))); }
+  } catch (err) { slotMsg('pok', await fileErr(f, err)); }
 };
 function diffPok(oldR, newR) {
   const o = new Map(oldR.map(r => [nz(r[0]), r])), n = new Map(newR.map(r => [nz(r[0]), r]));
@@ -800,22 +981,22 @@ function diffPok(oldR, newR) {
 function drawPokSummary() {
   const { f, A, D, prev, fixed, partial } = SL.pok, n = A.recs.length, pc = prev ? prev.count : 0;
   const shrink = !partial && pc && n < pc * (1 - V.SHRINK), W = pokWarnings(A.recs);
-  let h = `<div class="mut">${esc(f.name)}</div><div class="sum">${cell(n, 'items')}${cell(D.added.length, 'new', D.added.length ? 'ok' : '')}${cell(D.changed.length, 'changed', D.changed.length ? 'warn' : '')}${cell(D.priced.length, 'price changed', D.priced.length ? 'warn' : '')}${cell(D.removed.length, 'removed', D.removed.length ? 'warn' : '')}${cell(A.excluded.length, 'left out (errors)', A.excluded.length ? 'bad' : '')}${cell(W.length, 'barcode warnings', W.length ? 'warn' : '')}</div>`;
-  if (partial) h += box('ok', `<b>Search export:</b> this file has ${fmt(partial.inFile)} item(s). Only these are added or updated — the other items online stay as they are (nothing is removed).`) + (D.added.length + D.changed.length + D.priced.length ? '' : box('warn', 'These items are already online exactly like this — nothing to save.'));
-  if (fixed) h += box(fixed.still < fixed.before ? 'ok' : 'warn', `Orders that could not scan: <b>${fmt(fixed.before - fixed.still)}</b> line(s) fixed by this file · <b>${fmt(fixed.still)}</b> still broken`);
+  let h = `<div class="sum">${cell(n, 'items\nមុខទំនិញ')}${cell(D.added.length, 'new\nថ្មី', D.added.length ? 'ok' : '')}${cell(D.changed.length, 'changed\nបានប្តូរ', D.changed.length ? 'warn' : '')}${cell(D.priced.length, 'price changed\nប្តូរតម្លៃ', D.priced.length ? 'warn' : '')}${cell(D.removed.length, 'removed\nបានដកចេញ', D.removed.length ? 'warn' : '')}${cell(A.excluded.length, 'left out (errors)\nមិនបានបញ្ចូល (មានកំហុស)', A.excluded.length ? 'bad' : '')}${cell(W.length, 'barcode warnings\nបាកូដគួរពិនិត្យ', W.length ? 'warn' : '')}</div>`;
+  if (partial) h += msg('ok', `Search export: ${fmt(partial.inFile)} item(s) in this file`, `ឯកសារស្វែងរក៖ មាន ${fmt(partial.inFile)} មុខទំនិញ`, bi('Only these are added or updated — the other items online stay as they are (nothing is removed).', 'មានតែទំនិញទាំងនេះទេដែលត្រូវបន្ថែម ឬកែប្រែ — ទំនិញផ្សេងទៀតនៅដដែល (គ្មានអ្វីត្រូវលុបទេ)។')) + (D.added.length + D.changed.length + D.priced.length ? '' : msg('warn', 'Nothing to upload', 'គ្មានអ្វីត្រូវបញ្ចូលទេ', bi('These items are already online exactly like this.', 'ទំនិញទាំងនេះមាននៅលើប្រព័ន្ធដូចគ្នារួចហើយ។')));
+  if (fixed) h += msg(fixed.still < fixed.before ? 'ok' : 'warn', `${fmt(fixed.before - fixed.still)} line(s) fixed · ${fmt(fixed.still)} still can't scan`, `កែបាន ${fmt(fixed.before - fixed.still)} ជួរ · នៅសល់ ${fmt(fixed.still)} ជួរដែលមិនទាន់អាចស្កេនបាន`, bi('Orders that could not scan, checked against this file.', 'ការកុម្ម៉ង់ដែលស្កេនមិនបាន ធៀបនឹងឯកសារនេះ។'));
   h += priceBox(A.priceCol);
-  if (A.excluded.length) h += `<details><summary>${A.excluded.length} row(s) left out — PokPok person fixes these</summary>${tbl(['Row', 'Code', 'Name', 'Why'], A.excluded.slice(0, 300).map(([it, why]) => [it.row, it.code, (it.name || '') + ' ' + (it.attrs || ''), why]))}</details>`;
-  if (D.changed.length) h += `<details><summary>${D.changed.length} changed item(s)</summary>${tbl(['Code', 'Was', 'Now'], D.changed.slice(0, 300).map(([p, r]) => [r[0], p[2] + ' ' + p[3] + (p[1] !== r[1] ? ' · 🏷' + p[1] : ''), r[2] + ' ' + r[3] + (p[1] !== r[1] ? ' · 🏷' + r[1] : '')]))}</details>`;
-  if (D.priced.length) h += `<details><summary>${D.priced.length} price change(s)</summary>${tbl(['Code', 'Item', 'Was', 'Now'], D.priced.slice(0, 300).map(([p, r]) => [r[0], r[2] + ' ' + r[3], V.money(V.price(p[5])), V.money(V.price(r[5]))]))}</details>`;
-  if (shrink) h += box('bad', `<b>Blocked:</b> the current list has ${fmt(pc)} items and this file only ${fmt(n)} (more than 50% fewer). The export is probably incomplete or filtered. Export the full list again.`);
-  else if (D.risky.length) h += box('bad', `<b>⚠ ${D.risky.length} mapping change(s) — a barcode would now mean a different product.</b> Check each one:${tbl(['Item', 'What', 'Was', 'Now'], D.risky.slice(0, 200).map(x => [x.code, x.why, x.was, x.now]))}<label class="chk"><input type="checkbox" id="pokrisk"> I checked these; the new meaning is correct.</label>`);
-  if (!shrink && !(partial && !D.added.length && !D.changed.length && !D.priced.length)) h += `<div class="row"><button class="pri" id="pokgo"${D.risky.length ? ' disabled' : ''}>${partial ? 'Add / update ' + fmt(D.added.length + D.changed.length + D.priced.length) + ' item(s)' : 'Save to online (' + fmt(n) + ' items)'}</button></div>`;
+  if (A.excluded.length) h += `<details><summary>${bl(A.excluded.length + ' row(s) left out — PokPok person fixes these', A.excluded.length + ' ជួរមិនបានបញ្ចូល — អ្នកទទួលបន្ទុក PokPok ត្រូវកែ')}</summary>${tbl([['Row', 'ជួរ'], ['Code', 'កូដ'], ['Name', 'ឈ្មោះ'], ['Why', 'មូលហេតុ']], A.excluded.slice(0, 300).map(([it, why]) => [it.row, it.code, (it.name || '') + ' ' + (it.attrs || ''), why]))}</details>`;
+  if (D.changed.length) h += `<details><summary>${bl(D.changed.length + ' changed item(s)', D.changed.length + ' មុខទំនិញបានប្តូរ')}</summary>${tbl([['Code', 'កូដ'], ['Was', 'មុន'], ['Now', 'ឥឡូវ']], D.changed.slice(0, 300).map(([p, r]) => [r[0], p[2] + ' ' + p[3] + (p[1] !== r[1] ? ' · 🏷' + p[1] : ''), r[2] + ' ' + r[3] + (p[1] !== r[1] ? ' · 🏷' + r[1] : '')]))}</details>`;
+  if (D.priced.length) h += `<details><summary>${bl(D.priced.length + ' price change(s)', D.priced.length + ' ប្តូរតម្លៃ')}</summary>${tbl([['Code', 'កូដ'], ['Item', 'ទំនិញ'], ['Was', 'មុន'], ['Now', 'ឥឡូវ']], D.priced.slice(0, 300).map(([p, r]) => [r[0], r[2] + ' ' + r[3], V.money(V.price(p[5])), V.money(V.price(r[5]))]))}</details>`;
+  if (shrink) h += msg('bad', 'Blocked — this file looks incomplete', 'មិនអនុញ្ញាត — ឯកសារនេះហាក់ដូចជាមិនពេញលេញ', bi(`The list online has ${fmt(pc)} items and this file only ${fmt(n)} (more than 50% fewer). Export the full list again.`, `បញ្ជីនៅលើប្រព័ន្ធមាន ${fmt(pc)} មុខ តែឯកសារនេះមានតែ ${fmt(n)} មុខ (តិចជាង 50%)។ សូម Export បញ្ជីទាំងអស់ម្តងទៀត។`));
+  else if (D.risky.length) h += msg('bad', `${D.risky.length} barcode(s) would now mean a different product`, `បាកូដ ${D.risky.length} នឹងក្លាយជាទំនិញផ្សេង`, bi('Check each one, then tick the box to allow the upload.', 'សូមពិនិត្យម្តងមួយៗ រួចធីកប្រអប់ខាងក្រោម ដើម្បីអាចបញ្ចូលបាន។') + tbl([['Item', 'ទំនិញ'], ['What', 'អ្វី'], ['Was', 'មុន'], ['Now', 'ឥឡូវ']], D.risky.slice(0, 200).map(x => [x.code, x.why, x.was, x.now])) + `<label class="chk"><input type="checkbox" id="pokrisk"> ${bi('I checked these; the new meaning is correct.', 'ខ្ញុំបានពិនិត្យហើយ ទំនិញថ្មីនេះត្រឹមត្រូវ។')}</label>`);
+  if (!shrink && !(partial && !D.added.length && !D.changed.length && !D.priced.length)) h += step2() + (partial ? upBtn('pokgo', 'add / update ' + fmt(D.added.length + D.changed.length + D.priced.length) + ' item(s)', 'បន្ថែម / កែ ' + fmt(D.added.length + D.changed.length + D.priced.length) + ' មុខ', D.risky.length ? ' disabled' : '') : upBtn('pokgo', fmt(n) + ' items', fmt(n) + ' មុខទំនិញ', D.risky.length ? ' disabled' : ''));
   slotMsg('pok', h);
   if ($('pokrisk')) $('pokrisk').onchange = e => { $('pokgo').disabled = !e.target.checked; };
   if ($('pokgo')) $('pokgo').onclick = uploadPok;
 }
 async function uploadPok() {
-  const { f, A, D, fixed } = SL.pok; $('pokgo').disabled = true; progress('pok', 'Saving PokPok list…');
+  const { f, A, D, fixed } = SL.pok; $('pokgo').disabled = true; progress('pok', 'Uploading PokPok list… please wait\nកំពុងបញ្ចូលបញ្ជី PokPok… សូមរង់ចាំ');
   try {
     const fresh = D.first ? [] : [...D.added.map(r => r[0]), ...D.changed.map(x => x[1][0])].slice(0, 5000);
     const info = await publishCatalog('pok', A.recs, f.name, {
@@ -823,41 +1004,46 @@ async function uploadPok() {
       fresh: { ver: Date.now().toString(36), codes: fresh.join(' ') }
     });
     await syncDays();
-    slotMsg('pok', box('ok', (SL.pok.partial ? `✓ Added ${fmt(D.added.length)}, updated ${fmt(D.changed.length + D.priced.length)} · ` : '') + `✓ Saved · ${fmt(info.count)} items · version ${esc(info.ver)}. Phones switch to it automatically.` + (fresh.length ? ` The first scan of each of the ${fmt(fresh.length)} new/changed item(s) asks staff to confirm the item.` : '')));
+    slotMsg('pok', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(
+      (SL.pok.partial ? `Added ${fmt(D.added.length)}, updated ${fmt(D.changed.length + D.priced.length)} · ` : '') + `${fmt(info.count)} items online · version ${esc(info.ver)}. Phones switch to it automatically.` + (fresh.length ? ` The first scan of each of the ${fmt(fresh.length)} new/changed item(s) asks staff to confirm the item.` : ''),
+      (SL.pok.partial ? `បានបន្ថែម ${fmt(D.added.length)} · បានកែ ${fmt(D.changed.length + D.priced.length)} · ` : '') + `មាន ${fmt(info.count)} មុខទំនិញនៅលើប្រព័ន្ធ។ ទូរស័ព្ទប្តូរទៅប្រើបញ្ជីថ្មីដោយស្វ័យប្រវត្តិ។` + (fresh.length ? ` ពេលស្កេនទំនិញថ្មី/បានប្តូរ ${fmt(fresh.length)} មុខលើកដំបូង បុគ្គលិកត្រូវបញ្ជាក់ទំនិញ។` : ''))));
     drawStatus(); drawCat(); drawIssues();
-  } catch (err) { slotMsg('pok', box('bad', 'Not saved: ' + esc(nice(err)))); }
+  } catch (err) { slotMsg('pok', saveFail(err)); }
 }
 
 $('f-vrich').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  progress('vrich', 'Reading ' + f.name + ' …');
+  progress('vrich', 'Reading ' + f.name + ' …\nកំពុងអានឯកសារ ' + f.name + ' …');
   try {
     const { rows } = await readRows(f); const A = analyzeVrich(rows);
-    if (A.err) { slotMsg('vrich', box('bad', esc(A.err))); return; }
-    let prev = null; try { prev = await currentCatalog('vrich'); } catch (err) { slotMsg('vrich', box('bad', 'Could not read the current Vrich list: ' + esc(err.message))); return; }
+    if (A.err) { slotMsg('vrich', await wrongFile(f, A.err)); return; }
+    let prev = null; try { prev = await currentCatalog('vrich'); } catch (err) { slotMsg('vrich', msg('bad', 'Could not read the Vrich list that is online now', 'មិនអាចអានបញ្ជី Vrich ដែលមាននៅលើប្រព័ន្ធបានទេ', esc(err.message))); return; }
     const pm = new Map((prev ? prev.records : []).map(r => [nz(r[1] || r[0] + '|' + r[2]), JSON.stringify(r)]));
     let added = 0, changed = 0; A.recs.forEach(r => { const k = nz(r[1] || r[0] + '|' + r[2]), p = pm.get(k); if (p == null) added++; else if (p !== JSON.stringify(r)) changed++; });
     const n = A.recs.length, pc = prev ? prev.count : 0, shrink = pc && n < pc * (1 - V.SHRINK);
-    let h = `<div class="mut">${esc(f.name)}</div><div class="sum">${cell(n, 'stock codes')}${cell(added, 'new', added ? 'ok' : '')}${cell(changed, 'changed', '')}${cell(A.excluded.length, 'left out', A.excluded.length ? 'bad' : '')}</div>`;
-    if (A.excluded.length) h += `<details><summary>${A.excluded.length} row(s) left out — Vrich person fixes these</summary>${tbl(['Row', 'Code', 'Why'], A.excluded.slice(0, 300).map(([it, why]) => [it.row, it.code, why]))}</details>`;
-    if (shrink) h += box('bad', `<b>Blocked:</b> the current list has ${fmt(pc)} stock codes and this file only ${fmt(n)}. Export the full stock list again.`);
-    else h += `<div class="row"><button class="pri" id="vgo">Save to online (${fmt(n)} stock codes)</button></div>`;
+    let h = `<div class="sum">${cell(n, 'stock codes\nកូដស្តុក')}${cell(added, 'new\nថ្មី', added ? 'ok' : '')}${cell(changed, 'changed\nបានប្តូរ', '')}${cell(A.excluded.length, 'left out\nមិនបានបញ្ចូល', A.excluded.length ? 'bad' : '')}</div>`;
+    if (A.excluded.length) h += `<details><summary>${bl(A.excluded.length + ' row(s) left out — Vrich person fixes these', A.excluded.length + ' ជួរមិនបានបញ្ចូល — អ្នកទទួលបន្ទុក Vrich ត្រូវកែ')}</summary>${tbl([['Row', 'ជួរ'], ['Code', 'កូដ'], ['Why', 'មូលហេតុ']], A.excluded.slice(0, 300).map(([it, why]) => [it.row, it.code, why]))}</details>`;
+    if (shrink) h += msg('bad', 'Blocked — this file looks incomplete', 'មិនអនុញ្ញាត — ឯកសារនេះហាក់ដូចជាមិនពេញលេញ', bi(`The list online has ${fmt(pc)} stock codes and this file only ${fmt(n)}. Export the full stock list again.`, `បញ្ជីនៅលើប្រព័ន្ធមាន ${fmt(pc)} កូដស្តុក តែឯកសារនេះមានតែ ${fmt(n)}។ សូម Export បញ្ជីស្តុកទាំងអស់ម្តងទៀត។`));
+    else h += step2() + upBtn('vgo', fmt(n) + ' stock codes', fmt(n) + ' កូដស្តុក');
     slotMsg('vrich', h);
     if ($('vgo')) $('vgo').onclick = async () => {
-      $('vgo').disabled = true; progress('vrich', 'Saving Vrich stock…');
-      try { const info = await publishCatalog('vrich', A.recs, f.name, { info: { excluded: A.excluded.slice(0, 300).map(([it, why]) => it.row + '\t' + it.code + '\t\t' + why) } }); slotMsg('vrich', box('ok', `✓ Saved · ${fmt(info.count)} stock codes. `)); drawStatus(); drawCat(); }
-      catch (err) { slotMsg('vrich', box('bad', 'Not saved: ' + esc(nice(err)))); }
+      $('vgo').disabled = true; progress('vrich', 'Uploading Vrich stock… please wait\nកំពុងបញ្ចូលស្តុក Vrich… សូមរង់ចាំ');
+      try { const info = await publishCatalog('vrich', A.recs, f.name, { info: { excluded: A.excluded.slice(0, 300).map(([it, why]) => it.row + '\t' + it.code + '\t\t' + why) } }); slotMsg('vrich', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(`${fmt(info.count)} stock codes online.`, `មាន ${fmt(info.count)} កូដស្តុកនៅលើប្រព័ន្ធ។`))); drawStatus(); drawCat(); }
+      catch (err) { slotMsg('vrich', saveFail(err)); }
     };
-  } catch (err) { slotMsg('vrich', box('bad', 'Could not read that file: ' + esc(err.message))); }
+  } catch (err) { slotMsg('vrich', await fileErr(f, err)); }
 };
+
+// "Wrong file? Undo": removes the orders of this file that are online exactly as in the file
+const undoHTML = (n, fresh) => `<div class="undo"><span>${bl(fresh ? 'Uploaded the wrong file?' : 'Uploaded this file by mistake?', fresh ? 'បញ្ចូលឯកសារខុស?' : 'បញ្ចូលឯកសារនេះខុស?')}</span><button id="oundo">${bl('↩ Undo · remove these ' + fmt(n) + ' order(s)', '↩ ដកវិញ · លុប ' + fmt(n) + ' ការកុម្ម៉ង់នេះ')}</button></div>`;
 
 $('f-ord').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  progress('ord', 'Reading ' + f.name + ' …');
+  progress('ord', 'Reading ' + f.name + ' …\nកំពុងអានឯកសារ ' + f.name + ' …');
   try {
     const { rows } = await readRows(f, 0); const A = analyzeOrders(rows);
-    if (A.err) { slotMsg('ord', box('bad', esc(A.err))); return; }
-    const ids = Object.keys(A.orders); if (!ids.length) { slotMsg('ord', box('bad', 'No orders found in this file.')); return; }
+    if (A.err) { slotMsg('ord', await wrongFile(f, A.err)); return; }
+    const ids = Object.keys(A.orders); if (!ids.length) { slotMsg('ord', msg('bad', 'No orders found in this file', 'រកមិនឃើញការកុម្ម៉ង់ក្នុងឯកសារនេះទេ', bi('Check that you exported the Vrich order list.', 'សូមពិនិត្យថាបាន Export បញ្ជីការកុម្ម៉ង់ពី Vrich។'))); return; }
     const dates = [...new Set(ids.map(id => A.orders[id].d))].sort(), idx = {};
     for (const d of dates) { const x = await store.get(COL.idx, d); idx[d] = { o: V.idxMap(x && x.o) }; }
     const nw = [], ch = [], pr = [], same = [], gone = [];
@@ -867,24 +1053,24 @@ $('f-ord').onchange = async e => {
     let pokRecs = null; try { const c = await currentCatalog('pok'); pokRecs = c && c.records; } catch (err) {}
     const R = pokRecs ? readiness(linesOf(A.orders), pokRecs) : null;
     SL.ord = { f, A, dates, idx, nw, ch, pr, same, gone, R };
-    let h = `<div class="mut">${esc(f.name)} · ${dates.map(esc).join(', ')}</div><div class="sum">${cell(ids.length, 'orders')}${cell(A.lines, 'item lines')}${cell(nw.length, 'new', nw.length ? 'ok' : '')}${cell(ch.length, 'changed', ch.length ? 'warn' : '')}${pr.length ? cell(pr.length, 'price added / changed') : ''}${cell(same.length, 'unchanged (no write)')}</div>`;
-    h += priceBox(A.priceCol, A.priceCol ? ` · ${fmt(A.prices)} of ${fmt(A.lines)} lines have a price (stored per piece = Price ÷ Quantity)` + (R && R.counts.price ? ` · <b>${fmt(R.counts.price)}</b> line(s) where no PokPok label has the order price` : '') : '');
-    if (R) h += box(R.problems.length ? 'warn' : 'ok', `Scan check against the PokPok list: <b>${fmt(R.counts.ok)}</b> line(s) scan OK · <b>${fmt(R.problems.length)}</b> can't scan yet (see <i>To fix</i> below after saving).`);
-    else h += box('warn', 'No PokPok list online yet — upload it in slot 1 so every line can be checked.');
-    if (A.bad.length) h += box('warn', `${A.bad.length} row(s) skipped (no order number, no product code, or an order number with / . # $ [ ]): rows ${A.bad.slice(0, 20).join(', ')}${A.bad.length > 20 ? ' …' : ''}`);
-    if (A.noDate) h += box('warn', `${A.noDate} order(s) had no readable date and were filed under today.`);
-    if (ch.length) h += `<details><summary>${ch.length} changed order(s) — phones will ask staff to re-check them</summary><div class="mut">${ch.slice(0, 200).map(esc).join(', ')}${ch.length > 200 ? ' …' : ''}</div></details>`;
-    if (gone.length) h += box('warn', `<b>${gone.length}</b> order(s) uploaded earlier for ${dates.map(esc).join(', ')} are not in this file. <label class="chk"><input type="checkbox" id="ordcancel"> Mark them as <b>cancelled</b> (phones will say "don't pack"). Leave unticked if this export was filtered.</label><div class="mut" style="margin-top:4px">${gone.slice(0, 60).map(x => esc(x[1])).join(', ')}${gone.length > 60 ? ' …' : ''}</div>`);
-    h += `<div class="row"><button class="pri" id="ogo">Save to online (${fmt(nw.length + ch.length + pr.length)} write${nw.length + ch.length + pr.length === 1 ? '' : 's'})</button></div>`;
-    if (same.length) h += `<details><summary>Uploaded this file by mistake? Undo it</summary><div class="mut" style="margin-top:6px">Removes the <b>${fmt(same.length)}</b> order(s) that are online exactly as in this file (orders, daily order list and the "Orders that can't scan" day list). Choose the SAME wrong file again to use this. Orders that were scanned keep their scan log and issues.</div><div class="row"><button class="danger" id="oundo">Remove these ${fmt(same.length)} order(s) from online</button></div></details>`;
+    let h = `<div class="mut">📅 ${bl('Order date(s):', 'ថ្ងៃការកុម្ម៉ង់៖')} <b>${dates.map(esc).join(', ')}</b></div><div class="sum">${cell(ids.length, 'orders\nការកុម្ម៉ង់')}${cell(A.lines, 'item lines\nជួរទំនិញ')}${cell(nw.length, 'new\nថ្មី', nw.length ? 'ok' : '')}${cell(ch.length, 'changed\nបានប្តូរ', ch.length ? 'warn' : '')}${pr.length ? cell(pr.length, 'price added / changed\nបន្ថែម / ប្តូរតម្លៃ') : ''}${cell(same.length, 'unchanged (no write)\nដូចមុន (មិនបញ្ចូលទៀត)')}</div>`;
+    h += priceBox(A.priceCol, A.priceCol ? ` · ${fmt(A.prices)} of ${fmt(A.lines)} lines have a price (stored per piece = Price ÷ Quantity)` + (R && R.counts.price ? ` · <b>${fmt(R.counts.price)}</b> line(s) where no PokPok label has the order price` : '') : '', A.priceCol ? ` · ${fmt(A.prices)} ក្នុងចំណោម ${fmt(A.lines)} ជួរមានតម្លៃ (រក្សាទុកតម្លៃមួយដុំ = Price ÷ Quantity)` + (R && R.counts.price ? ` · <b>${fmt(R.counts.price)}</b> ជួរដែលគ្មានស្លាក PokPok តម្លៃដូចការកុម្ម៉ង់` : '') : '');
+    if (R) h += msg(R.problems.length ? 'warn' : 'ok', `${fmt(R.counts.ok)} line(s) scan OK · ${fmt(R.problems.length)} can't scan yet`, `${fmt(R.counts.ok)} ជួរស្កេនបាន · ${fmt(R.problems.length)} ជួរមិនទាន់អាចស្កេនបាន`, bi('Checked against the PokPok list. After uploading, see <i>To fix</i> below.', 'បានធៀបនឹងបញ្ជី PokPok។ ក្រោយបញ្ចូល សូមមើលផ្នែក «ត្រូវកែ» ខាងក្រោម។'));
+    else h += msg('warn', 'No PokPok list online yet', 'មិនទាន់មានបញ្ជី PokPok នៅលើប្រព័ន្ធ', bi('Upload it in box 1 so every line can be checked.', 'សូមបញ្ចូលវានៅប្រអប់ទី 1 ដើម្បីពិនិត្យជួរទាំងអស់បាន។'));
+    if (A.bad.length) h += msg('warn', `${A.bad.length} row(s) skipped`, `រំលង ${A.bad.length} ជួរ`, bi(`No order number, no product code, or an order number with / . # $ [ ]: rows ${A.bad.slice(0, 20).join(', ')}${A.bad.length > 20 ? ' …' : ''}`, `គ្មានលេខការកុម្ម៉ង់ គ្មានកូដទំនិញ ឬលេខការកុម្ម៉ង់មានសញ្ញា / . # $ [ ]៖ ជួរ ${A.bad.slice(0, 20).join(', ')}${A.bad.length > 20 ? ' …' : ''}`));
+    if (A.noDate) h += msg('warn', `${A.noDate} order(s) had no readable date`, `${A.noDate} ការកុម្ម៉ង់គ្មានកាលបរិច្ឆេទអានបាន`, bi('They were filed under today.', 'ត្រូវបានដាក់ជាថ្ងៃនេះ។'));
+    if (ch.length) h += `<details><summary>${bl(ch.length + ' changed order(s) — phones will ask staff to re-check them', ch.length + ' ការកុម្ម៉ង់បានប្តូរ — ទូរស័ព្ទនឹងប្រាប់បុគ្គលិកឱ្យពិនិត្យម្តងទៀត')}</summary><div class="mut">${ch.slice(0, 200).map(esc).join(', ')}${ch.length > 200 ? ' …' : ''}</div></details>`;
+    if (gone.length) h += msg('warn', `${gone.length} order(s) uploaded earlier are not in this file`, `${gone.length} ការកុម្ម៉ង់ដែលបានបញ្ចូលពីមុន មិនមានក្នុងឯកសារនេះទេ`, `${bl('Dates:', 'ថ្ងៃ៖')} ${dates.map(esc).join(', ')}<label class="chk"><input type="checkbox" id="ordcancel"> ${bi('Mark them as <b>cancelled</b> (phones will say "don\'t pack"). Leave unticked if this export was filtered.', 'ដាក់ថា <b>បានលុបចោល</b> (ទូរស័ព្ទនឹងប្រាប់ថា «កុំវេចខ្ចប់»)។ កុំធីក បើឯកសារនេះ Export តែមួយផ្នែក។')}</label><div class="mut" style="margin-top:4px">${gone.slice(0, 60).map(x => esc(x[1])).join(', ')}${gone.length > 60 ? ' …' : ''}</div>`);
+    h += step2() + upBtn('ogo', fmt(nw.length + ch.length + pr.length) + ' order(s)', fmt(nw.length + ch.length + pr.length) + ' ការកុម្ម៉ង់');
+    if (same.length) h += undoHTML(same.length, false) + `<div class="mut">${bi('Removes the orders that are online exactly as in this file (orders, daily order list and the "Orders that can\'t scan" list). Orders that were scanned keep their scan log and issues.', 'លុបការកុម្ម៉ង់ដែលដូចឯកសារនេះទាំងស្រុងចេញពីប្រព័ន្ធ។ ការកុម្ម៉ង់ដែលបានស្កេនហើយ នៅរក្សាកំណត់ត្រាស្កេនដដែល។')}</div>`;
     slotMsg('ord', h); $('ogo').onclick = uploadOrders; if ($('oundo')) $('oundo').onclick = undoOrders;
-  } catch (err) { slotMsg('ord', box('bad', 'Could not read that file: ' + esc(nice(err)))); }
+  } catch (err) { slotMsg('ord', await fileErr(f, { message: nice(err) })); }
 };
 // undo a wrong upload: remove the orders of this file that are online unchanged (same signature = they came from this file)
 async function undoOrders() {
   const S = SL.ord; if (!S.same.length) return;
-  if (!confirm('Remove ' + S.same.length + ' order(s) of ' + S.f.name + ' from online? Phones will no longer find them.')) return;
-  $('oundo').disabled = true; progress('ord', 'Removing orders…');
+  if (!confirm(Lc('Remove ' + S.same.length + ' order(s) of ' + S.f.name + ' from online? Phones will no longer find them.', 'លុប ' + S.same.length + ' ការកុម្ម៉ង់នៃ ' + S.f.name + ' ចេញពីប្រព័ន្ធ? ទូរស័ព្ទនឹងរកវាមិនឃើញទៀតទេ។'))) return;
+  $('oundo').disabled = true; progress('ord', 'Removing orders…\nកំពុងលុបការកុម្ម៉ង់…');
   try {
     const ops = S.same.map(id => ({ op: 'del', col: COL.orders, id })), byDate = {};
     S.same.forEach(id => { const d = S.A.orders[id].d; (byDate[d] = byDate[d] || {})[id] = store.delField(); });
@@ -901,11 +1087,11 @@ async function undoOrders() {
     if (!RD.list.some(o => o.d === RD.sel)) { RD.sel = RD.list.length ? RD.list[0].d : ''; ST.report = null; }
     await saveDayIndex(); await syncDays(Object.keys(byDate).filter(d => RD.list.some(o => o.d === d)));
     if (RD.sel) await openDay(RD.sel); else { drawReady(); drawStatus(); }
-    slotMsg('ord', box('ok', `✓ Removed ${fmt(S.same.length)} order(s) of ${esc(S.f.name)}. Now upload the right order file.`));
-  } catch (err) { slotMsg('ord', box('bad', 'Not removed: ' + esc(nice(err)))); }
+    slotMsg('ord', msg('ok', `Removed ${fmt(S.same.length)} order(s)`, `បានលុប ${fmt(S.same.length)} ការកុម្ម៉ង់`, bi(`From ${esc(S.f.name)}. Now upload the right order file.`, `ពី ${esc(S.f.name)}។ សូមបញ្ចូលឯកសារការកុម្ម៉ង់ដែលត្រឹមត្រូវ។`)));
+  } catch (err) { slotMsg('ord', msg('bad', 'Not removed', 'លុបមិនបានសម្រេច', esc(nice(err)))); }
 }
 async function uploadOrders() {
-  const S = SL.ord, cancel = $('ordcancel') && $('ordcancel').checked; $('ogo').disabled = true; progress('ord', 'Saving orders…');
+  const S = SL.ord, cancel = $('ordcancel') && $('ordcancel').checked; $('ogo').disabled = true; progress('ord', 'Uploading orders… please wait\nកំពុងបញ្ចូលការកុម្ម៉ង់… សូមរង់ចាំ');
   try {
     const now = V.localNow(), ops = [], idxUpd = {};
     S.dates.forEach(d => { idxUpd[d] = {}; });
@@ -925,30 +1111,41 @@ async function uploadOrders() {
     S.dates.forEach(d => { if (Object.keys(idxUpd[d]).length) ops.push({ op: 'set', col: COL.idx, id: d, data: { d, at: now, o: idxUpd[d] }, merge: true }); });
     await store.batch(ops);
     await saveDays(S, cancel);
-    slotMsg('ord', box('ok', `✓ Saved · ${fmt(S.nw.length)} new, ${fmt(S.ch.length)} changed${cancel ? ', ' + fmt(S.gone.length) + ' cancelled' : ''}. Phones can scan them now.`));
+    // every order of this file is now online exactly as in the file — the same set "choose the same file again → Undo" would remove
+    S.same = Object.keys(S.A.orders);
+    slotMsg('ord', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(`${fmt(S.nw.length)} new, ${fmt(S.ch.length)} changed${cancel ? ', ' + fmt(S.gone.length) + ' cancelled' : ''}. Phones can scan them now.`, `ថ្មី ${fmt(S.nw.length)} · បានប្តូរ ${fmt(S.ch.length)}${cancel ? ' · បានលុបចោល ' + fmt(S.gone.length) : ''}។ ទូរស័ព្ទអាចស្កេនបានហើយឥឡូវនេះ។`)) + undoHTML(S.same.length, true));
+    $('oundo').onclick = undoOrders;
     drawStatus(); autoCleanup();
-  } catch (err) { slotMsg('ord', box('bad', 'Not saved: ' + esc(nice(err)))); }
+  } catch (err) { slotMsg('ord', saveFail(err)); }
 }
 
 /* ---------- tables + to-fix panels ---------- */
-function tbl(head, rows) { return `<div class="scroll"><table><tr>${head.map(h => '<th>' + esc(h) + '</th>').join('')}</tr>${rows.map(r => '<tr>' + r.map(c => typeof c === 'number' ? '<td class="n">' + fmt(c) + '</td>' : '<td>' + esc(c) + '</td>').join('') + '</tr>').join('')}</table></div>`; }
-const ST_TAG = { nosale: ['No PokPok item', 'bad'], words: ['Colour/size words differ', 'warn'], flagged: ['Duplicate code', 'warn'], price: ['💲 Price differs', 'warn'] };
+// a header may be [en, km]; a cell may be { h: trusted HTML }
+function tbl(head, rows) { return `<div class="scroll"><table><tr>${head.map(h => '<th>' + (Array.isArray(h) ? bl(esc(h[0]), esc(h[1])) : esc(h)) + '</th>').join('')}</tr>${rows.map(r => '<tr>' + r.map(c => c && typeof c === 'object' && c.h != null ? '<td>' + c.h + '</td>' : typeof c === 'number' ? '<td class="n">' + fmt(c) + '</td>' : '<td>' + esc(c) + '</td>').join('') + '</tr>').join('')}</table></div>`; }
+const ST_TAG = { nosale: ['No PokPok item', 'bad', 'គ្មានទំនិញ PokPok'], words: ['Colour/size words differ', 'warn', 'ពាក្យពណ៌/ទំហំខុសគ្នា'], flagged: ['Duplicate code', 'warn', 'កូដស្ទួន'], price: ['💲 Price differs', 'warn', '💲 តម្លៃខុសគ្នា'] };
+const FIX_KM = {
+  nosale: 'PokPok៖ បង្កើតទំនិញ (ពាក្យទីមួយនៃឈ្មោះ = កូដលក់) ហើយព្រីនស្លាក — ឬ Vrich៖ កែកូដលក់ បើសរសេរខុស',
+  words: 'ធ្វើឱ្យពាក្យពណ៌/ទំហំដូចគ្នាក្នុងប្រព័ន្ធទាំងពីរ (យកឈ្មោះ Vrich ជាគោល) — ឬ PokPok៖ បន្ថែមពណ៌/ទំហំដែលខ្វះ',
+  flagged: 'PokPok៖ លុបកូដផលិតផលដែលស្ទួន',
+  price: 'ពិនិត្យតម្លៃការកុម្ម៉ង់ក្នុង Vrich (បញ្ចុះតម្លៃ / តម្លៃ Live?) — ឬអ្នក PokPok កែតម្លៃ PokPok'
+};
+const MIXED = bl('✓ Mixed', '✓ អីវ៉ាន់ចម្រុះ');
 function drawReady() {
   const R = ST.report, el = $('p-ready');
-  if (!R) { el.innerHTML = dayChips() + '<div class="mut">' + (RD.list.length ? 'Choose a day.' : 'Choose an order date above — or upload the Vrich order export (slot 3). Every ordered line is checked against the PokPok list, day by day.') + '</div>'; wireDayChips(); return; }
+  if (!R) { el.innerHTML = dayChips() + '<div class="mut">' + (RD.list.length ? bl('Choose a day.', 'ជ្រើសរើសថ្ងៃ។') : bi('Choose an order date above — or upload the Vrich order export (box 3). Every ordered line is checked against the PokPok list, day by day.', 'ជ្រើសរើសថ្ងៃការកុម្ម៉ង់ខាងលើ — ឬបញ្ចូលឯកសារការកុម្ម៉ង់ Vrich (ប្រអប់ទី 3)។ ជួរទំនិញនីមួយៗត្រូវពិនិត្យជាមួយបញ្ជី PokPok តាមថ្ងៃ។')) + '</div>'; wireDayChips(); return; }
   const c = R.counts || {}, total = R.lines || 0, bad = R.problemsTotal != null ? R.problemsTotal : (R.problems || []).length;
-  let h = dayChips() + `<h3>Orders of ${esc((R.dates || []).join(', '))}</h3>` + (R.partial ? box('warn', 'This day comes from the list saved before the update — it holds only the lines that could not scan then. Upload this day\'s Vrich order export again (slot 3) to check every line.') : '') + `<div class="mut">${fmt(R.orders || 0)} orders · last file ${esc(R.file || '')} · checked ${esc(V.when(R.at))} with the current PokPok list, Same words and 🔗 links</div>`;
-  h += `<div class="sum">${cell(total, 'item lines')}${cell(c.ok || 0, 'scan OK', 'ok')}${cell(c.nosale || 0, 'no PokPok item', c.nosale ? 'bad' : '')}${cell(c.words || 0, 'colour/size differ', c.words ? 'warn' : '')}${cell(c.flagged || 0, 'duplicate code', c.flagged ? 'warn' : '')}${cell(c.price || 0, 'price differs', c.price ? 'warn' : '')}</div>`;
-  if (R.fixedNow) h += box('ok', `The last PokPok upload fixed <b>${fmt(R.fixedNow)}</b> line(s).`);
-  if (!bad) { el.innerHTML = h + box('ok', 'Every ordered line of this day can be scanned. 🎉') + looseHTML() + linksHTML(); wireLinks(); wireDayChips(); return; }
-  h += `<div class="mut">Grouped by sale code, most lines first. <b>Vrich says</b> = the order description; <b>PokPok has</b> = the colour/size words on PokPok items with that sale code. The scanner needs every PokPok word to appear in the Vrich description.</div>`;
-  h += `<div class="mut"><b>✓ អីវ៉ាន់ចម្រុះ · Mixed</b> = many PokPok barcodes, one Vrich code: ANY PokPok colour/size of that code counts for its order lines (e.g. discount items sold under one Vrich code, or the last piece). If an order line names its own size/colour, staff must check it by eye. Each time it is used you get a notice under <i>Missing codes &amp; holds</i> with what was packed.</div>`;
-  h += `<div class="mut"><b>🔗 Match</b> = link each PokPok item to its Vrich stock code yourself. No reprint, no change in PokPok or Vrich; every phone uses the link at once.</div>`;
-  if (c.price) h += `<div class="mut"><b>💲 Price differs</b> = no PokPok label that fits the line has the <b>order</b> price (per piece). Phones will not count those labels. A discount / live price in the order? Fix the order in Vrich and upload the orders again — or fix the price in PokPok and upload the PokPok list again. Or turn the price check OFF in Settings.</div>`;
-  h += tbl(['Sale code', 'Problem', 'Lines', 'Orders', 'Vrich says', 'PokPok has', 'Who fixes', ''], (R.groups || []).map(g => [g.sale, (ST_TAG[g.st] || [g.st])[0], g.lines, g.orders, g.vrich.join(' · '), g.st === 'nosale' ? '—' : g.pok.join(' · '), V.LINE_FIX[g.st] || '', g.st === 'price' ? '' : '@@M' + g.sale + (g.st === 'words' ? '|W' : '')]));
-  h = h.replace(/<td>@@M([^<|]*)(\|W)?<\/td>/g, (m, s, w) => `<td style="white-space:nowrap"><button data-match="${s}" style="min-height:34px">🔗 Match</button>${w ? ` <button data-allow="${s}" style="min-height:34px" title="អីវ៉ាន់ចម្រុះ: any PokPok colour/size of ${s} counts for its order lines; you are told what was packed">✓ អីវ៉ាន់ចម្រុះ · Mixed</button>` : ''}</td>`);
+  let h = dayChips() + `<h3>${bl('Orders of ' + esc((R.dates || []).join(', ')), 'ការកុម្ម៉ង់ថ្ងៃ ' + esc((R.dates || []).join(', ')))}</h3>` + (R.partial ? box('warn', bi('This day comes from the list saved before the update — it holds only the lines that could not scan then. Upload this day\'s Vrich order export again (box 3) to check every line.', 'ថ្ងៃនេះមកពីបញ្ជីចាស់ — មានតែជួរដែលស្កេនមិនបានពេលនោះ។ សូមបញ្ចូលឯកសារការកុម្ម៉ង់ Vrich នៃថ្ងៃនេះម្តងទៀត (ប្រអប់ទី 3) ដើម្បីពិនិត្យគ្រប់ជួរ។')) : '') + `<div class="mut">${bi(`${fmt(R.orders || 0)} orders · last file ${esc(R.file || '')} · checked ${esc(V.when(R.at))} with the current PokPok list, Same words and 🔗 links`, `${fmt(R.orders || 0)} ការកុម្ម៉ង់ · ឯកសារចុងក្រោយ ${esc(R.file || '')} · ពិនិត្យ ${esc(V.when(R.at))} ជាមួយបញ្ជី PokPok ពាក្យដូចគ្នា និង 🔗 តំណ`)}</div>`;
+  h += `<div class="sum">${cell(total, 'item lines\nជួរទំនិញ')}${cell(c.ok || 0, 'scan OK\nស្កេនបាន', 'ok')}${cell(c.nosale || 0, 'no PokPok item\nគ្មានទំនិញ PokPok', c.nosale ? 'bad' : '')}${cell(c.words || 0, 'colour/size differ\nពណ៌/ទំហំខុសគ្នា', c.words ? 'warn' : '')}${cell(c.flagged || 0, 'duplicate code\nកូដស្ទួន', c.flagged ? 'warn' : '')}${cell(c.price || 0, 'price differs\nតម្លៃខុសគ្នា', c.price ? 'warn' : '')}</div>`;
+  if (R.fixedNow) h += box('ok', bl(`The last PokPok upload fixed <b>${fmt(R.fixedNow)}</b> line(s).`, `ការបញ្ចូល PokPok ចុងក្រោយបានកែ <b>${fmt(R.fixedNow)}</b> ជួរ។`));
+  if (!bad) { el.innerHTML = h + box('ok', bl('Every ordered line of this day can be scanned. 🎉', 'ជួរទំនិញទាំងអស់នៃថ្ងៃនេះអាចស្កេនបាន។ 🎉')) + looseHTML() + linksHTML(); wireLinks(); wireDayChips(); return; }
+  h += `<div class="mut">${bi('Grouped by sale code, most lines first. <b>Vrich says</b> = the order description; <b>PokPok has</b> = the colour/size words on PokPok items with that sale code. The scanner needs every PokPok word to appear in the Vrich description.', 'ដាក់ជាក្រុមតាមកូដលក់ ច្រើនជួរមុនគេ។ <b>Vrich សរសេរ</b> = ការពិពណ៌នាក្នុងការកុម្ម៉ង់ · <b>PokPok មាន</b> = ពាក្យពណ៌/ទំហំលើទំនិញ PokPok នៃកូដលក់នោះ។ ពាក្យ PokPok គ្រប់ពាក្យត្រូវមានក្នុងការពិពណ៌នា Vrich ទើបស្កេនបាន។')}</div>`;
+  h += `<div class="mut">${bi('<b>✓ Mixed (អីវ៉ាន់ចម្រុះ)</b> = many PokPok barcodes, one Vrich code: ANY PokPok colour/size of that code counts for its order lines (e.g. discount items sold under one Vrich code, or the last piece). If an order line names its own size/colour, staff must check it by eye. Each time it is used you get a notice under <i>Missing codes &amp; holds</i> with what was packed.', '<b>✓ អីវ៉ាន់ចម្រុះ</b> = បាកូដ PokPok ច្រើន កូដ Vrich មួយ៖ ពណ៌/ទំហំ PokPok ណាមួយនៃកូដនោះ រាប់បានសម្រាប់ការកុម្ម៉ង់ (ឧ. ទំនិញបញ្ចុះតម្លៃ ឬដុំចុងក្រោយ)។ បើការកុម្ម៉ង់បញ្ជាក់ទំហំ/ពណ៌ បុគ្គលិកត្រូវពិនិត្យដោយភ្នែក។ រាល់ពេលប្រើ អ្នកទទួលបានដំណឹងក្នុង <i>កូដបាត់ និងការផ្អាក</i>។')}</div>`;
+  h += `<div class="mut">${bi('<b>🔗 Match</b> = link each PokPok item to its Vrich stock code yourself. No reprint, no change in PokPok or Vrich; every phone uses the link at once.', '<b>🔗 ភ្ជាប់</b> = ភ្ជាប់ទំនិញ PokPok នីមួយៗទៅកូដស្តុក Vrich ដោយខ្លួនឯង។ មិនបាច់ព្រីនឡើងវិញ មិនបាច់កែ PokPok ឬ Vrich ទេ ទូរស័ព្ទប្រើភ្លាមៗ។')}</div>`;
+  if (c.price) h += `<div class="mut">${bi('<b>💲 Price differs</b> = no PokPok label that fits the line has the <b>order</b> price (per piece). Phones will not count those labels. A discount / live price in the order? Fix the order in Vrich and upload the orders again — or fix the price in PokPok and upload the PokPok list again. Or turn the price check OFF in Settings.', '<b>💲 តម្លៃខុសគ្នា</b> = គ្មានស្លាក PokPok ណាមានតម្លៃដូច<b>ការកុម្ម៉ង់</b> (មួយដុំ)។ ទូរស័ព្ទមិនរាប់ស្លាកទាំងនោះទេ។ កែការកុម្ម៉ង់ក្នុង Vrich ហើយបញ្ចូលម្តងទៀត — ឬកែតម្លៃក្នុង PokPok ហើយបញ្ចូលបញ្ជី PokPok ម្តងទៀត — ឬបិទការពិនិត្យតម្លៃ។')}</div>`;
+  h += tbl([['Sale code', 'កូដលក់'], ['Problem', 'បញ្ហា'], ['Lines', 'ជួរ'], ['Orders', 'ការកុម្ម៉ង់'], ['Vrich says', 'Vrich សរសេរ'], ['PokPok has', 'PokPok មាន'], ['Who fixes', 'អ្នកកែ'], ''], (R.groups || []).map(g => [g.sale, { h: ST_TAG[g.st] ? bl(esc(ST_TAG[g.st][0]), esc(ST_TAG[g.st][2])) : esc(g.st) }, g.lines, g.orders, g.vrich.join(' · '), g.st === 'nosale' ? '—' : g.pok.join(' · '), { h: V.LINE_FIX[g.st] ? bi(esc(V.LINE_FIX[g.st]), esc(FIX_KM[g.st] || V.LINE_FIX[g.st])) : '' }, g.st === 'price' ? '' : '@@M' + g.sale + (g.st === 'words' ? '|W' : '')]));
+  h = h.replace(/<td>@@M([^<|]*)(\|W)?<\/td>/g, (m, s, w) => `<td style="white-space:nowrap"><button data-match="${s}" style="min-height:34px">${bl('🔗 Match', '🔗 ភ្ជាប់')}</button>${w ? ` <button data-allow="${s}" style="min-height:34px" title="${esc(L('Mixed: any PokPok colour/size of ' + s + ' counts for its order lines; you are told what was packed', 'អីវ៉ាន់ចម្រុះ៖ ពណ៌/ទំហំ PokPok ណាមួយនៃ ' + s + ' រាប់បាន ហើយអ្នកនឹងដឹងថាវេចអ្វី'))}">${MIXED}</button>` : ''}</td>`);
   h += `<div id="matchbox"></div>`;
-  h += `<div class="row"><button id="rdcsv">⬇ Every line (CSV)</button><span class="mut">${(R.groups || []).length >= 400 ? 'Showing the first 400 codes.' : ''}</span></div>`;
+  h += `<div class="row"><button id="rdcsv">${bl('⬇ Every line (CSV)', '⬇ ជួរទាំងអស់ (CSV)')}</button><span class="mut">${(R.groups || []).length >= 400 ? bl('Showing the first 400 codes.', 'បង្ហាញតែ 400 កូដដំបូង។') : ''}</span></div>`;
   el.innerHTML = h;
   el.insertAdjacentHTML('beforeend', looseHTML() + linksHTML()); wireLinks(); wireDayChips();
   el.querySelectorAll('[data-match]').forEach(b => b.onclick = () => openMatch(b.dataset.match));
@@ -960,33 +1157,34 @@ async function loadLinks() { const d = await store.get(COL.meta, 'links'); ST.li
 /* ---------- ✓ Allow by code ---------- */
 async function saveLoose() { await store.set(COL.meta, 'loose', { txt: V.looseText(ST.loose), at: V.localNow(), by: ST.user.email }); }
 async function allowCode(code) {
-  if (!confirm('អីវ៉ាន់ចម្រុះ · Mixed: ' + code + '\n\nMany PokPok barcodes = one Vrich code. Any PokPok colour/size of ' + code + ' will count for ' + code + ' order lines whose colour/size words do not match. Every time it is used you get a notice with what was packed.\n\nRemove it later under "✓ អីវ៉ាន់ចម្រុះ · Mixed".')) return;
+  if (!confirm(Lc('អីវ៉ាន់ចម្រុះ · Mixed: ' + code + '\n\nMany PokPok barcodes = one Vrich code. Any PokPok colour/size of ' + code + ' will count for ' + code + ' order lines whose colour/size words do not match. Every time it is used you get a notice with what was packed.\n\nRemove it later under "✓ Mixed".', 'អីវ៉ាន់ចម្រុះ៖ ' + code + '\n\nបាកូដ PokPok ច្រើន = កូដ Vrich មួយ។ ពណ៌/ទំហំ PokPok ណាមួយនៃ ' + code + ' នឹងរាប់បានសម្រាប់ការកុម្ម៉ង់ ' + code + ' ដែលពាក្យពណ៌/ទំហំមិនដូចគ្នា។ រាល់ពេលប្រើ អ្នកទទួលបានដំណឹងថាវេចអ្វី។\n\nអាចដកចេញវិញនៅ «✓ អីវ៉ាន់ចម្រុះ»។'))) return;
   ST.loose.set(nz(code), { code, by: ST.user.email, at: V.localNow() });
   try { await saveLoose(); await syncDays(); } catch (e) { alert(nice(e)); }
 }
+const rmBtn = (attr, v) => `<td><button ${attr}="${v}" style="min-height:32px">${bl('Remove', 'ដកចេញ')}</button></td>`;
 function looseHTML() {
-  const L = [...ST.loose.values()]; if (!L.length) return '';
-  return `<details style="margin-top:12px"><summary>✓ អីវ៉ាន់ចម្រុះ · Mixed: ${L.length} code(s) (any colour/size counts)</summary>` + tbl(['Code', 'By', 'When', ''], L.map(x => [x.code, (x.by || '').split('@')[0], V.when(x.at), '@@L' + x.code])).replace(/<td>@@L([^<]*)<\/td>/g, (m, c) => `<td><button data-unloose="${c}" style="min-height:32px">Remove</button></td>`) + '</details>';
+  const LS = [...ST.loose.values()]; if (!LS.length) return '';
+  return `<details style="margin-top:12px"><summary>${MIXED}: ${bl(LS.length + ' code(s) (any colour/size counts)', LS.length + ' កូដ (ពណ៌/ទំហំណាក៏រាប់បាន)')}</summary>` + tbl([['Code', 'កូដ'], ['By', 'ដោយ'], ['When', 'ពេល'], ''], LS.map(x => [x.code, (x.by || '').split('@')[0], V.when(x.at), '@@L' + x.code])).replace(/<td>@@L([^<]*)<\/td>/g, (m, c) => rmBtn('data-unloose', c)) + '</details>';
 }
 async function saveLinks() { await store.set(COL.meta, 'links', { txt: V.linksText(ST.links), at: V.localNow(), by: ST.user.email }); }
 function linksHTML() {
-  const L = [...ST.links.values()];
-  if (!L.length) return '';
-  return `<details style="margin-top:12px"><summary>🔗 ${L.length} manager link(s) in use</summary>` + tbl(['PokPok code', 'Vrich stock code', 'By', 'When', ''], L.map(x => [x.pok, x.stock, (x.by || '').split('@')[0], V.when(x.at), '@@D' + x.pok])).replace(/<td>@@D([^<]*)<\/td>/g, (m, s) => `<td><button data-unlink="${s}" style="min-height:32px">Remove</button></td>`) + '</details>';
+  const LS = [...ST.links.values()];
+  if (!LS.length) return '';
+  return `<details style="margin-top:12px"><summary>${bl('🔗 ' + LS.length + ' manager link(s) in use', '🔗 ' + LS.length + ' តំណដែលអ្នកគ្រប់គ្រងកំពុងប្រើ')}</summary>` + tbl([['PokPok code', 'កូដ PokPok'], ['Vrich stock code', 'កូដស្តុក Vrich'], ['By', 'ដោយ'], ['When', 'ពេល'], ''], LS.map(x => [x.pok, x.stock, (x.by || '').split('@')[0], V.when(x.at), '@@D' + x.pok])).replace(/<td>@@D([^<]*)<\/td>/g, (m, s) => rmBtn('data-unlink', s)) + '</details>';
 }
 function wireLinks() {
   document.querySelectorAll('[data-unloose]').forEach(b => b.onclick = async () => {
-    if (!confirm('Stop អីវ៉ាន់ចម្រុះ (mixed) for ' + b.dataset.unloose + '? Phones go back to the strict check at once.')) return;
+    if (!confirm(Lc('Stop Mixed (អីវ៉ាន់ចម្រុះ) for ' + b.dataset.unloose + '? Phones go back to the strict check at once.', 'បញ្ឈប់អីវ៉ាន់ចម្រុះសម្រាប់ ' + b.dataset.unloose + '? ទូរស័ព្ទត្រឡប់ទៅពិនិត្យតឹងរ៉ឹងវិញភ្លាមៗ។'))) return;
     ST.loose.delete(nz(b.dataset.unloose)); try { await saveLoose(); await syncDays(); } catch (e) { alert(nice(e)); }
   });
   document.querySelectorAll('[data-unlink]').forEach(b => b.onclick = async () => {
-    if (!confirm('Remove the link for ' + b.dataset.unlink + '? Phones stop using it at once.')) return;
+    if (!confirm(Lc('Remove the link for ' + b.dataset.unlink + '? Phones stop using it at once.', 'ដកតំណសម្រាប់ ' + b.dataset.unlink + '? ទូរស័ព្ទឈប់ប្រើវាភ្លាមៗ។'))) return;
     ST.links.delete(nz(b.dataset.unlink)); try { await saveLinks(); await recheckAfterLinks(); } catch (e) { alert(nice(e)); }
   });
 }
 async function recheckAfterLinks() { await syncDays(); }      // Same words / 🔗 links changed: re-check every day
 async function openMatch(sale) {
-  const mb = $('matchbox'); mb.innerHTML = '<div class="mut">Loading…</div>'; mb.scrollIntoView({ block: 'center' });
+  const mb = $('matchbox'); mb.innerHTML = '<div class="mut">' + bl('Loading…', 'កំពុងផ្ទុក…') + '</div>'; mb.scrollIntoView({ block: 'center' });
   let pok = null, vr = null; try { pok = await currentCatalog('pok'); vr = await currentCatalog('vrich'); } catch (e) { mb.innerHTML = box('bad', esc(e.message)); return; }
   const S = nz(sale), g = ((ST.report && ST.report.groups) || []).find(x => nz(x.sale) === S);
   const variants = new Map();          // stock code -> label
@@ -994,13 +1192,13 @@ async function openMatch(sale) {
   ((g && g.stocks) || []).forEach(s => { const [st, d] = s.split('\t'); if (st && !variants.has(st)) variants.set(st, d + ' (from orders)'); });
   let items = pok ? pok.records.filter(r => V.saleOf(r[2]).sale === S) : [];
   if (pok && !items.length) { const sp = V.sizeSplit(V.bySale(pok.records), S); if (sp) { const want = new Set(sp.cand.map(i => nz(i.code))); items = pok.records.filter(r => want.has(nz(r[0]))); } }   // "7H38" = PokPok 7H size 38
-  const opts = cur => '<option value="">— not linked —</option>' + [...variants].map(([s, d]) => `<option value="${esc(s)}"${cur && nz(cur) === nz(s) ? ' selected' : ''}>${esc(s)} · ${esc(d)}</option>`).join('');
-  let h = `<div class="box warn"><b>🔗 Match ${esc(sale)}</b> — choose the Vrich stock code for each PokPok item. Check the real item if you are not sure.`;
-  if (!variants.size) { mb.innerHTML = h + '<div style="margin-top:6px">⚠ These order lines have <b>no Vrich stock code</b> (Vrich has no variants for ' + esc(sale) + '), so there is nothing to link to. Fix it at the source: PokPok person creates the item / makes the colour word the same as Vrich — or Vrich person creates the variant.</div><div class="row"><button id="mxclose">Close</button></div></div>'; $('mxclose').onclick = () => { mb.innerHTML = ''; }; return; }
-  h += items.length ? tbl(['PokPok code', 'Barcode', 'PokPok name / colour / size', 'Vrich stock code'], items.map(r => [r[0], r[1], r[2] + ' ' + r[3], '@@S' + r[0]])).replace(/<td>@@S([^<]*)<\/td>/g, (m, c) => `<td><select data-pok="${c}" style="width:100%">${opts((ST.links.get(nz(c)) || {}).stock)}</select></td>`)
-    : '<div style="margin-top:6px">No PokPok item has this sale code. If the item is in PokPok under another name, type its PokPok code or barcode:</div>';
-  h += `<div class="row"><input id="mxcode" placeholder="Other PokPok code or barcode (optional)"><select id="mxstock">${opts('')}</select></div>`;
-  h += `<div class="row"><button class="pri" id="mxsave">Save links</button><button id="mxclose">Close</button><span id="mxmsg" class="mut"></span></div></div>`;
+  const opts = cur => `<option value="">${esc(L('— not linked —', '— មិនទាន់ភ្ជាប់ —'))}</option>` + [...variants].map(([s, d]) => `<option value="${esc(s)}"${cur && nz(cur) === nz(s) ? ' selected' : ''}>${esc(s)} · ${esc(d)}</option>`).join('');
+  let h = `<div class="box warn">` + bi(`<b>🔗 Match ${esc(sale)}</b> — choose the Vrich stock code for each PokPok item. Check the real item if you are not sure.`, `<b>🔗 ភ្ជាប់ ${esc(sale)}</b> — ជ្រើសរើសកូដស្តុក Vrich សម្រាប់ទំនិញ PokPok នីមួយៗ។ បើមិនប្រាកដ សូមពិនិត្យទំនិញពិត។`);
+  if (!variants.size) { mb.innerHTML = h + '<div style="margin-top:6px">' + bi('⚠ These order lines have <b>no Vrich stock code</b> (Vrich has no variants for ' + esc(sale) + '), so there is nothing to link to. Fix it at the source: PokPok person creates the item / makes the colour word the same as Vrich — or Vrich person creates the variant.', '⚠ ជួរការកុម្ម៉ង់ទាំងនេះ <b>គ្មានកូដស្តុក Vrich</b> (Vrich គ្មានប្រភេទសម្រាប់ ' + esc(sale) + ') ដូច្នេះគ្មានអ្វីត្រូវភ្ជាប់ទេ។ កែនៅប្រភព៖ អ្នក PokPok បង្កើតទំនិញ / ធ្វើឱ្យពាក្យពណ៌ដូច Vrich — ឬអ្នក Vrich បង្កើតប្រភេទ។') + `</div><div class="row"><button id="mxclose">${bl('Close', 'បិទ')}</button></div></div>`; $('mxclose').onclick = () => { mb.innerHTML = ''; }; return; }
+  h += items.length ? tbl([['PokPok code', 'កូដ PokPok'], ['Barcode', 'បាកូដ'], ['PokPok name / colour / size', 'ឈ្មោះ / ពណ៌ / ទំហំ PokPok'], ['Vrich stock code', 'កូដស្តុក Vrich']], items.map(r => [r[0], r[1], r[2] + ' ' + r[3], '@@S' + r[0]])).replace(/<td>@@S([^<]*)<\/td>/g, (m, c) => `<td><select data-pok="${c}" style="width:100%">${opts((ST.links.get(nz(c)) || {}).stock)}</select></td>`)
+    : '<div style="margin-top:6px">' + bi('No PokPok item has this sale code. If the item is in PokPok under another name, type its PokPok code or barcode:', 'គ្មានទំនិញ PokPok មានកូដលក់នេះទេ។ បើទំនិញមានក្នុង PokPok ក្រោមឈ្មោះផ្សេង សូមវាយកូដ ឬបាកូដ PokPok របស់វា៖') + '</div>';
+  h += `<div class="row"><input id="mxcode" placeholder="${esc(L('Other PokPok code or barcode (optional)', 'កូដ ឬបាកូដ PokPok ផ្សេង (បើមាន)'))}"><select id="mxstock">${opts('')}</select></div>`;
+  h += `<div class="row"><button class="pri" id="mxsave">${bl('Save links', 'រក្សាទុកតំណ')}</button><button id="mxclose">${bl('Close', 'បិទ')}</button><span id="mxmsg" class="mut"></span></div></div>`;
   mb.innerHTML = h;
   $('mxclose').onclick = () => { mb.innerHTML = ''; };
   $('mxsave').onclick = async () => {
@@ -1008,41 +1206,42 @@ async function openMatch(sale) {
     mb.querySelectorAll('select[data-pok]').forEach(s => { const k = nz(s.dataset.pok), old = ST.links.get(k); if (s.value) { if (!old || nz(old.stock) !== nz(s.value)) { ST.links.set(k, { pok: s.dataset.pok, stock: s.value, by, at: now }); n++; } } else if (old) { ST.links.delete(k); n++; } });
     const extra = clean($('mxcode').value), es = $('mxstock').value;
     if (extra || es) {
-      if (!extra || !es) { $('mxmsg').textContent = 'Type the PokPok code AND choose the Vrich stock code'; return; }
+      if (!extra || !es) { say('mxmsg', 'Type the PokPok code AND choose the Vrich stock code', 'វាយកូដ PokPok ហើយជ្រើសរើសកូដស្តុក Vrich'); return; }
       const P = V.buildPok(pok.records), info = P.get(nz(extra));
-      if (!info || info.ambiguous) { $('mxmsg').textContent = extra + (info ? ' is shared by several PokPok items — use the item code' : ' is not in the PokPok list'); return; }
+      if (!info || info.ambiguous) { say('mxmsg', extra + (info ? ' is shared by several PokPok items — use the item code' : ' is not in the PokPok list'), extra + (info ? ' ប្រើដោយទំនិញ PokPok ច្រើន — សូមប្រើកូដទំនិញ' : ' មិនមានក្នុងបញ្ជី PokPok ទេ')); return; }
       ST.links.set(nz(info.code), { pok: info.code, stock: es, by, at: now }); n++;
     }
-    if (!n) { $('mxmsg').textContent = 'Nothing changed'; return; }
-    $('mxmsg').textContent = 'Saving…';
+    if (!n) { say('mxmsg', 'Nothing changed', 'គ្មានអ្វីប្តូរ'); return; }
+    say('mxmsg', 'Saving…', 'កំពុងរក្សាទុក…');
     try { await saveLinks(); await recheckAfterLinks(); drawCatIfOpen(); } catch (e) { $('mxmsg').textContent = nice(e); }
   };
 }
 function drawCatIfOpen() { if (!$('p-cat').classList.contains('hide')) drawCat(); }
 
+const WKIND_KM = k => /^Same barcode on (\d+) items$/.test(k) ? 'បាកូដដូចគ្នាលើទំនិញ ' + RegExp.$1 + ' មុខ' : /another item/.test(k) ? 'បាកូដជាកូដរបស់ទំនិញផ្សេង' : k;
 async function drawCat() {
-  const el = $('p-cat'); el.innerHTML = '<div class="mut">Loading catalogs…</div>';
+  const el = $('p-cat'); el.innerHTML = '<div class="mut">' + bl('Loading catalogs…', 'កំពុងផ្ទុកបញ្ជីទំនិញ…') + '</div>';
   let pok = null, vr = null;
   try { pok = await currentCatalog('pok'); vr = await currentCatalog('vrich'); } catch (e) { el.innerHTML = box('bad', esc(e.message)); return; }
-  if (!pok && !vr) { el.innerHTML = '<div class="mut">Upload the PokPok list and the Vrich stock first.</div>'; return; }
+  if (!pok && !vr) { el.innerHTML = '<div class="mut">' + bl('Upload the PokPok list and the Vrich stock first.', 'សូមបញ្ចូលបញ្ជី PokPok និងស្តុក Vrich ជាមុនសិន។') + '</div>'; return; }
   let h = '';
   const exP = ((ST.meta.pok || {}).excluded || []).map(s => s.split('\t')), exV = ((ST.meta.vrich || {}).excluded || []).map(s => s.split('\t'));
   const W = pok ? pokWarnings(pok.records) : [];
   // in-stock Vrich variants that no PokPok label can scan; in-stock PokPok items whose sale code Vrich does not know
-  const vNo = [], pNo = [];
+  const vNo = [], pNo = [], vNoShow = [];
   if (pok && vr) {
     const bySale = V.bySale(pok.records), vSales = new Set(vr.records.map(r => nz(r[0])));
     const linked = V.linkedStocks(ST.links);
     // every Vrich code is checked: its quantity means nothing
-    vr.records.forEach(r => { if (r[1] && linked.has(nz(r[1]))) return; const s = V.lineState(bySale, null, { code: r[0], desc: r[2], size: r[3], color: r[4] }); if (s.st !== 'ok') vNo.push([r[0], r[1], [r[2], r[3], r[4]].filter(Boolean).join(' / '), s.st === 'nosale' ? 'No PokPok item' : 'Words differ: PokPok has ' + [...new Set(s.cand.map(i => [...i.attrs].join(' ')))].slice(0, 6).join(' · ')]); });
+    vr.records.forEach(r => { if (r[1] && linked.has(nz(r[1]))) return; const s = V.lineState(bySale, null, { code: r[0], desc: r[2], size: r[3], color: r[4] }); if (s.st !== 'ok') { const has = [...new Set(s.cand.map(i => [...i.attrs].join(' ')))].slice(0, 6).join(' · '); vNo.push([r[0], r[1], [r[2], r[3], r[4]].filter(Boolean).join(' / '), s.st === 'nosale' ? 'No PokPok item' : 'Words differ: PokPok has ' + has]); vNoShow.push(s.st === 'nosale' ? { h: bl('No PokPok item', 'គ្មានទំនិញ PokPok') } : { h: bl('Words differ: PokPok has ' + esc(has), 'ពាក្យខុសគ្នា៖ PokPok មាន ' + esc(has)) }); } });
     pok.records.forEach(r => { if (!(r[4] > 0)) return; const s = V.saleOf(r[2]).sale; if (s && !vSales.has(s) && ![...V.toks(r[3])].some(t => /^\d+$/.test(t) && vSales.has(s + t))) pNo.push([r[0], r[1], r[2], r[3], r[4]]); });
   }
-  const sec = (title, cls, n, owner, inner, csv) => `<h3>${esc(title)} <span class="tag ${n ? cls : 'ok'}">${fmt(n)}</span></h3><div class="mut">${owner}</div>${n ? inner : ''}${n && csv ? `<div class="row"><button data-csv="${csv}">⬇ CSV</button></div>` : ''}`;
-  h += sec('Vrich items that no PokPok label can scan', 'bad', vNo.length, '<b>PokPok person:</b> add the item / colour / size, or make the words the same as Vrich.', tbl(['Sale code', 'Stock code', 'Vrich colour/size', 'Problem'], vNo.slice(0, 150)), 'vno');
-  h += sec('PokPok items in stock whose sale code is not in Vrich', 'warn', pNo.length, '<b>Vrich person:</b> create the code — or <b>PokPok person:</b> fix the first word of the name if it is a typo.', tbl(['PokPok code', 'Barcode', 'Name', 'Attributes', 'Qty'], pNo.slice(0, 150)), 'pno');
-  h += sec('Barcode problems in PokPok (scanner will not guess)', 'warn', W.length, '<b>PokPok person:</b> give each item its own barcode.', tbl(['Barcode', 'Problem', 'Items'], W.slice(0, 150).map(w => [w.bar, w.kind, w.items.join(' | ')])), 'bar');
-  h += sec('Rows left out at the last upload', 'bad', exP.length + exV.length, 'Fix in PokPok / Vrich, then upload again.', tbl(['List', 'Row', 'Code', 'Name', 'Why'], [...exP.map(x => ['PokPok', ...x]), ...exV.map(x => ['Vrich', ...x])].slice(0, 300)), '');
-  if (!vr) h = box('warn', 'Upload the Vrich stock (slot 2) to compare it with PokPok.') + h;
+  const sec = (en, km, cls, n, owner, inner, csv) => `<h3>${bl(esc(en), esc(km))} <span class="tag ${n ? cls : 'ok'}">${fmt(n)}</span></h3><div class="mut">${owner}</div>${n ? inner : ''}${n && csv ? `<div class="row"><button data-csv="${csv}">⬇ CSV</button></div>` : ''}`;
+  h += sec('Vrich items that no PokPok label can scan', 'ទំនិញ Vrich ដែលគ្មានស្លាក PokPok អាចស្កេនបាន', 'bad', vNo.length, bi('<b>PokPok person:</b> add the item / colour / size, or make the words the same as Vrich.', '<b>អ្នក PokPok៖</b> បន្ថែមទំនិញ / ពណ៌ / ទំហំ ឬធ្វើឱ្យពាក្យដូច Vrich។'), tbl([['Sale code', 'កូដលក់'], ['Stock code', 'កូដស្តុក'], ['Vrich colour/size', 'ពណ៌/ទំហំ Vrich'], ['Problem', 'បញ្ហា']], vNo.slice(0, 150).map((r, i) => [r[0], r[1], r[2], vNoShow[i]])), 'vno');
+  h += sec('PokPok items in stock whose sale code is not in Vrich', 'ទំនិញ PokPok មានស្តុក តែកូដលក់មិនមានក្នុង Vrich', 'warn', pNo.length, bi('<b>Vrich person:</b> create the code — or <b>PokPok person:</b> fix the first word of the name if it is a typo.', '<b>អ្នក Vrich៖</b> បង្កើតកូដ — ឬ <b>អ្នក PokPok៖</b> កែពាក្យទីមួយនៃឈ្មោះ បើសរសេរខុស។'), tbl([['PokPok code', 'កូដ PokPok'], ['Barcode', 'បាកូដ'], ['Name', 'ឈ្មោះ'], ['Attributes', 'លក្ខណៈ'], ['Qty', 'ចំនួន']], pNo.slice(0, 150)), 'pno');
+  h += sec('Barcode problems in PokPok (scanner will not guess)', 'បញ្ហាបាកូដក្នុង PokPok (ម៉ាស៊ីនស្កេនមិនទាយទេ)', 'warn', W.length, bi('<b>PokPok person:</b> give each item its own barcode.', '<b>អ្នក PokPok៖</b> ផ្តល់បាកូដផ្ទាល់ខ្លួនដល់ទំនិញនីមួយៗ។'), tbl([['Barcode', 'បាកូដ'], ['Problem', 'បញ្ហា'], ['Items', 'ទំនិញ']], W.slice(0, 150).map(w => [w.bar, { h: bl(esc(w.kind), esc(WKIND_KM(w.kind))) }, w.items.join(' | ')])), 'bar');
+  h += sec('Rows left out at the last upload', 'ជួរដែលមិនបានបញ្ចូល ពេលបញ្ចូលចុងក្រោយ', 'bad', exP.length + exV.length, bi('Fix in PokPok / Vrich, then upload again.', 'កែក្នុង PokPok / Vrich រួចបញ្ចូលម្តងទៀត។'), tbl([['List', 'បញ្ជី'], ['Row', 'ជួរ'], ['Code', 'កូដ'], ['Name', 'ឈ្មោះ'], ['Why', 'មូលហេតុ']], [...exP.map(x => ['PokPok', ...x]), ...exV.map(x => ['Vrich', ...x])].slice(0, 300)), '');
+  if (!vr) h = box('warn', bi('Upload the Vrich stock (box 2) to compare it with PokPok.', 'សូមបញ្ចូលស្តុក Vrich (ប្រអប់ទី 2) ដើម្បីប្រៀបធៀបជាមួយ PokPok។')) + h;
   el.innerHTML = h;
   el.querySelectorAll('[data-csv]').forEach(b => b.onclick = () => {
     const k = b.dataset.csv;
@@ -1061,30 +1260,34 @@ async function drawIssues() {
   const rest = ST.issues.filter(i => i.type !== 'short' && i.type !== 'shortreq' && i.type !== 'quirk' && i.type !== 'allowed' && !RP.includes(i.type) && !i.disputed);
   const unk = rest.filter(i => i.type === 'wrong' && !i.label), held = rest.filter(i => i.type === 'incomplete'), other = rest.filter(i => !unk.includes(i) && !held.includes(i));
   $('issn').textContent = ST.issues.length ? '(' + ST.issues.length + ')' : '';
-  const btn = (id, act, label, cls) => `<button data-act="${act}" data-id="${esc(id)}" class="${cls || ''}" style="min-height:32px;white-space:nowrap">${esc(label)}</button>`;
-  const rows = (head, list, cells) => `<div class="scroll"><table><tr>${head.map(x => '<th>' + esc(x) + '</th>').join('')}</tr>${list.map(i => '<tr>' + cells(i).map(c => '<td>' + c + '</td>').join('') + '</tr>').join('')}</table></div>`;
-  let h = `<div class="row"><button id="issref">↻ Refresh</button><span class="mut">${fmt(ST.issues.length)} open. Issues close by themselves when staff finish the order; supervisors close the rest with a reason.</span></div>`;
-  h += `<h3>🔁 Pack again — order was already packed <span class="tag ${rpq.length ? 'bad' : 'ok'}">${rpq.length}</span></h3><div class="mut">Staff scanned an order that was already scanned complete. Approve only if it really must be packed again (customer changed it, box damaged) — otherwise it may be shipped twice.</div>`;
-  if (rpq.length) h += rows(['Order', 'Customer', 'Packed before', 'Why again', 'When', 'Your note', ''], rpq, i => ['#' + esc(i.order), esc(i.fb || ''), esc((i.expected || '').replace(/^Packed before: /, '')), esc(i.reason), esc(V.when(i.t)), `<input data-note="${esc(i.id)}" placeholder="optional" style="min-width:140px">`, btn(i.id, 'rpok', '✓ Approve', 'pri') + ' ' + btn(i.id, 'rpno', '✗ Reject', 'danger')]);
-  if (rpok.length) h += `<details><summary>${rpok.length} approved, not packed again yet</summary>` + rows(['Order', 'Approved', 'Packed before', 'When', ''], rpok, i => ['#' + esc(i.order), esc(i.reason), esc((i.expected || '').replace(/^Packed before: /, '')), esc(V.when(i.approvedAt || i.t)), btn(i.id, 'rpcancel', 'Withdraw')]) + '</details>';
-  h += `<h3>⏳ Ship short — waiting for approval <span class="tag ${reqs.length ? 'bad' : 'ok'}">${reqs.length}</span></h3><div class="mut">Requests sent to you or to a supervisor (the supervisor answers on their phone; you can answer either).</div><div class="mut">Staff could not find these items. Approve = they pack and ship without them (the order then moves to the list below). Reject = they must find the item.</div>`;
-  if (reqs.length) h += rows(['Order', 'Customer', 'Missing', 'Reason · note', 'Asked by · sent to', 'When', 'Your note', ''], reqs, i => ['#' + esc(i.order), esc(i.fb || ''), '<b>' + esc((i.label || '').replace(/^Missing: /, '')) + '</b>' + ((i.miss || []).some(m => m.scanned) ? '<div class="mut">code entered: ' + esc(i.miss.map(m => m.scanned).filter(Boolean).join(', ')) + '</div>' : ''), esc(i.snote || (i.reason || '').replace(/^Asked by [^—]*—\s*/, '')), esc(i.staff || '') + '<div class="mut">→ ' + (i.to === 'sup' ? '👤 supervisor' : 'manager') + '</div>', esc(V.when(i.t)), `<input data-note="${esc(i.id)}" placeholder="e.g. refund $3 / send later" style="min-width:160px">`, btn(i.id, 'approve', '✓ Approve', 'pri') + ' ' + btn(i.id, 'reject', '✗ Reject', 'danger')]);
-  h += `<h3>📦 Shipped short — clean up the order and tell the customer <span class="tag ${short.length ? 'bad' : 'ok'}">${short.length}</span></h3><div class="mut">Closes when both steps are ticked.</div>`;
-  if (short.length) h += rows(['Order', 'Customer', 'Sent without', 'Approved', 'Note', 'When', 'Vrich', 'Customer'], short, i => ['#' + esc(i.order), esc(i.fb || ''), esc((i.label || '').replace(/^(Shipped without|Missing): /, '')) + (i.snote ? '<div class="mut">' + esc(i.snote) + '</div>' : ''), esc(i.reason) + (i.approvedBy ? '' : ''), esc(i.mnote || ''), esc(V.when(i.t)), i.vrichDone ? '✓ ' + esc(V.when(i.vrichDone)) : btn(i.id, 'vrich', 'Fixed in Vrich'), i.notified ? '✓ ' + esc(V.when(i.notified)) : btn(i.id, 'notified', 'Customer told')]);
-  h += `<h3>⚡ Technical quirks — staff say the item is correct <span class="tag ${quirk.length ? 'bad' : 'ok'}">${quirk.length}</span></h3><div class="mut">Staff checked the item by eye and counted it without a PIN because the system would not take it. Look at the scanned label: if PokPok / Vrich data is the problem, fix it (or 🔗 Match) and tap <b>Quirk confirmed</b>. If the wrong item was packed, tap <b>Staff mistake</b> and fix the parcel.</div>`;
-  if (quirk.length) h += rows(['Order', 'Customer', 'Scanned', 'Counted for', 'Staff note', 'Staff', 'When', ''], quirk, i => ['#' + esc(i.order), esc(i.fb || ''), esc(((i.label || '') + ' ' + i.code).trim()), esc((i.line || '') + ' ' + (i.lineDesc || '')), esc(i.reason || ''), esc(i.staff || ''), esc(V.when(i.t)), btn(i.id, 'qok', '✓ Quirk confirmed', 'pri') + ' ' + btn(i.id, 'qstaff', 'Staff mistake', 'danger')]);
-  h += `<h3>✓ អីវ៉ាន់ចម្រុះ · Mixed — what staff packed <span class="tag ${allowed.length ? 'warn' : 'ok'}">${allowed.length}</span></h3><div class="mut">These order lines counted only because the code is អីវ៉ាន់ចម្រុះ (mixed — any colour/size). Check the colour/size that was packed against the order, then tap <b>Seen</b>.</div>`;
-  if (allowed.length) h += rows(['Order', 'Customer', 'Packed (scanned label)', 'Order line', 'Staff', 'When', ''], allowed, i => ['#' + esc(i.order), esc(i.fb || ''), '<b>' + esc(((i.label || '') + ' · ' + i.code).trim()) + '</b>', esc((i.line || '') + ' ' + (i.lineDesc || '')), esc(i.staff || ''), esc(V.when(i.t)), btn(i.id, 'seen', '✓ Seen', 'pri')]) + `<div class="row"><button id="seenall">✓ Seen all ${allowed.length}</button></div>`;
-  h += `<h3>⚖ Staff say the system is wrong <span class="tag ${disp.length ? 'warn' : 'ok'}">${disp.length}</span></h3><div class="mut">Look up the scanned barcode. If PokPok's name/colour/size is wrong for that item, it is a catalog problem (fix it in PokPok or with 🔗 Match). Otherwise the wrong item was picked.</div>`;
-  if (disp.length) h += rows(['Order', 'Scanned', 'Order needed', 'Staff', 'When', ''], disp, i => ['#' + esc(i.order), esc((i.label || '') + ' ' + i.code), esc(i.expected), esc(i.disputeBy || i.staff), esc(V.when(i.disputeAt || i.t)), btn(i.id, 'catalog', 'Catalog problem (staff right)') + ' ' + btn(i.id, 'staff', 'Staff mistake')]);
+  const btn = (id, act, en, km, cls) => `<button data-act="${act}" data-id="${esc(id)}" class="${cls || ''}" style="min-height:32px;white-space:nowrap">${bl(esc(en), esc(km))}</button>`;
+  const hd = list => list.map(x => Array.isArray(x) ? bl(esc(x[0]), esc(x[1])) : esc(x));
+  const rows = (head, list, cells) => `<div class="scroll"><table><tr>${hd(head).map(x => '<th>' + x + '</th>').join('')}</tr>${list.map(i => '<tr>' + cells(i).map(c => '<td>' + c + '</td>').join('') + '</tr>').join('')}</table></div>`;
+  const sh = (en, km, n, cls) => `<h3>${bl(en, km)} <span class="tag ${n ? cls : 'ok'}">${n}</span></h3>`;
+  const note = (id, en, km, w) => `<input data-note="${esc(id)}" placeholder="${esc(L(en, km))}" style="min-width:${w}px">`;
+  const ORD = ['Order', 'ការកុម្ម៉ង់'], CUS = ['Customer', 'អតិថិជន'], WHEN = ['When', 'ពេល'], STAFF = ['Staff', 'បុគ្គលិក'], YN = ['Your note', 'កំណត់ចំណាំរបស់អ្នក'];
+  let h = `<div class="row"><button id="issref">${bl('↻ Refresh', '↻ ផ្ទុកឡើងវិញ')}</button><span class="mut">${bi(`${fmt(ST.issues.length)} open. Issues close by themselves when staff finish the order; supervisors close the rest with a reason.`, `${fmt(ST.issues.length)} នៅបើក។ បញ្ហាបិទដោយខ្លួនឯង ពេលបុគ្គលិកបញ្ចប់ការកុម្ម៉ង់ ហើយអ្នកត្រួតពិនិត្យបិទដែលនៅសល់ ដោយមានមូលហេតុ។`)}</span></div>`;
+  h += sh('🔁 Pack again — order was already packed', '🔁 វេចម្តងទៀត — ការកុម្ម៉ង់បានវេចរួចហើយ', rpq.length, 'bad') + `<div class="mut">${bi('Staff scanned an order that was already scanned complete. Approve only if it really must be packed again (customer changed it, box damaged) — otherwise it may be shipped twice.', 'បុគ្គលិកស្កេនការកុម្ម៉ង់ដែលបានស្កេនរួចហើយ។ អនុម័តតែពេលពិតជាត្រូវវេចម្តងទៀត (អតិថិជនប្តូរ ប្រអប់ខូច) — បើមិនដូច្នោះទេ អាចផ្ញើពីរដង។')}</div>`;
+  if (rpq.length) h += rows([ORD, CUS, ['Packed before', 'បានវេចពីមុន'], ['Why again', 'ហេតុអ្វីម្តងទៀត'], WHEN, YN, ''], rpq, i => ['#' + esc(i.order), esc(i.fb || ''), esc((i.expected || '').replace(/^Packed before: /, '')), esc(i.reason), esc(V.when(i.t)), note(i.id, 'optional', 'មិនចាំបាច់', 140), btn(i.id, 'rpok', '✓ Approve', '✓ អនុម័ត', 'pri') + ' ' + btn(i.id, 'rpno', '✗ Reject', '✗ បដិសេធ', 'danger')]);
+  if (rpok.length) h += `<details><summary>${bl(rpok.length + ' approved, not packed again yet', rpok.length + ' បានអនុម័ត តែមិនទាន់វេចម្តងទៀត')}</summary>` + rows([ORD, ['Approved', 'បានអនុម័ត'], ['Packed before', 'បានវេចពីមុន'], WHEN, ''], rpok, i => ['#' + esc(i.order), esc(i.reason), esc((i.expected || '').replace(/^Packed before: /, '')), esc(V.when(i.approvedAt || i.t)), btn(i.id, 'rpcancel', 'Withdraw', 'ដកវិញ')]) + '</details>';
+  h += sh('⏳ Ship short — waiting for approval', '⏳ ផ្ញើខ្វះ — កំពុងរង់ចាំការអនុម័ត', reqs.length, 'bad') + `<div class="mut">${bi('Requests sent to you or to a supervisor (the supervisor answers on their phone; you can answer either). Staff could not find these items. Approve = they pack and ship without them (the order then moves to the list below). Reject = they must find the item.', 'សំណើផ្ញើមកអ្នក ឬអ្នកត្រួតពិនិត្យ (អ្នកត្រួតពិនិត្យឆ្លើយលើទូរស័ព្ទ អ្នកអាចឆ្លើយបានទាំងពីរ)។ បុគ្គលិករកទំនិញទាំងនេះមិនឃើញ។ អនុម័ត = វេច និងផ្ញើដោយគ្មានវា (ការកុម្ម៉ង់ទៅបញ្ជីខាងក្រោម)។ បដិសេធ = ត្រូវរកទំនិញឱ្យឃើញ។')}</div>`;
+  if (reqs.length) h += rows([ORD, CUS, ['Missing', 'ខ្វះ'], ['Reason · note', 'មូលហេតុ · ចំណាំ'], ['Asked by · sent to', 'អ្នកស្នើ · ផ្ញើទៅ'], WHEN, YN, ''], reqs, i => ['#' + esc(i.order), esc(i.fb || ''), '<b>' + esc((i.label || '').replace(/^Missing: /, '')) + '</b>' + ((i.miss || []).some(m => m.scanned) ? '<div class="mut">' + bl('code entered:', 'កូដដែលបានវាយ៖') + ' ' + esc(i.miss.map(m => m.scanned).filter(Boolean).join(', ')) + '</div>' : ''), esc(i.snote || (i.reason || '').replace(/^Asked by [^—]*—\s*/, '')), esc(i.staff || '') + '<div class="mut">→ ' + (i.to === 'sup' ? bl('👤 supervisor', '👤 អ្នកត្រួតពិនិត្យ') : bl('manager', 'អ្នកគ្រប់គ្រង')) + '</div>', esc(V.when(i.t)), note(i.id, 'e.g. refund $3 / send later', 'ឧ. សងប្រាក់ $3 / ផ្ញើពេលក្រោយ', 160), btn(i.id, 'approve', '✓ Approve', '✓ អនុម័ត', 'pri') + ' ' + btn(i.id, 'reject', '✗ Reject', '✗ បដិសេធ', 'danger')]);
+  h += sh('📦 Shipped short — clean up the order and tell the customer', '📦 បានផ្ញើខ្វះ — កែការកុម្ម៉ង់ ហើយប្រាប់អតិថិជន', short.length, 'bad') + `<div class="mut">${bl('Closes when both steps are ticked.', 'បិទពេលធីករួចទាំងពីរជំហាន។')}</div>`;
+  if (short.length) h += rows([ORD, CUS, ['Sent without', 'ផ្ញើដោយគ្មាន'], ['Approved', 'បានអនុម័ត'], ['Note', 'ចំណាំ'], WHEN, 'Vrich', CUS], short, i => ['#' + esc(i.order), esc(i.fb || ''), esc((i.label || '').replace(/^(Shipped without|Missing): /, '')) + (i.snote ? '<div class="mut">' + esc(i.snote) + '</div>' : ''), esc(i.reason) + (i.approvedBy ? '' : ''), esc(i.mnote || ''), esc(V.when(i.t)), i.vrichDone ? '✓ ' + esc(V.when(i.vrichDone)) : btn(i.id, 'vrich', 'Fixed in Vrich', 'កែក្នុង Vrich រួច'), i.notified ? '✓ ' + esc(V.when(i.notified)) : btn(i.id, 'notified', 'Customer told', 'បានប្រាប់អតិថិជន')]);
+  h += sh('⚡ Technical quirks — staff say the item is correct', '⚡ បញ្ហាបច្ចេកទេស — បុគ្គលិកថាទំនិញត្រឹមត្រូវ', quirk.length, 'bad') + `<div class="mut">${bi('Staff checked the item by eye and counted it without a PIN because the system would not take it. Look at the scanned label: if PokPok / Vrich data is the problem, fix it (or 🔗 Match) and tap <b>Quirk confirmed</b>. If the wrong item was packed, tap <b>Staff mistake</b> and fix the parcel.', 'បុគ្គលិកពិនិត្យដោយភ្នែក ហើយរាប់ដោយគ្មាន PIN ព្រោះប្រព័ន្ធមិនទទួល។ មើលស្លាកដែលបានស្កេន៖ បើទិន្នន័យ PokPok / Vrich ខុស សូមកែ (ឬ 🔗 ភ្ជាប់) ហើយចុច <b>បញ្ជាក់បញ្ហាបច្ចេកទេស</b>។ បើវេចទំនិញខុស ចុច <b>កំហុសបុគ្គលិក</b> ហើយកែកញ្ចប់។')}</div>`;
+  if (quirk.length) h += rows([ORD, CUS, ['Scanned', 'បានស្កេន'], ['Counted for', 'រាប់សម្រាប់'], ['Staff note', 'ចំណាំបុគ្គលិក'], STAFF, WHEN, ''], quirk, i => ['#' + esc(i.order), esc(i.fb || ''), esc(((i.label || '') + ' ' + i.code).trim()), esc((i.line || '') + ' ' + (i.lineDesc || '')), esc(i.reason || ''), esc(i.staff || ''), esc(V.when(i.t)), btn(i.id, 'qok', '✓ Quirk confirmed', '✓ បញ្ជាក់បញ្ហាបច្ចេកទេស', 'pri') + ' ' + btn(i.id, 'qstaff', 'Staff mistake', 'កំហុសបុគ្គលិក', 'danger')]);
+  h += sh('✓ Mixed — what staff packed', '✓ អីវ៉ាន់ចម្រុះ — អ្វីដែលបុគ្គលិកបានវេច', allowed.length, 'warn') + `<div class="mut">${bi('These order lines counted only because the code is Mixed (any colour/size). Check the colour/size that was packed against the order, then tap <b>Seen</b>.', 'ជួរទាំងនេះរាប់បាន ព្រោះកូដជាអីវ៉ាន់ចម្រុះ (ពណ៌/ទំហំណាក៏បាន)។ ពិនិត្យពណ៌/ទំហំដែលបានវេចធៀបនឹងការកុម្ម៉ង់ ហើយចុច <b>បានឃើញ</b>។')}</div>`;
+  if (allowed.length) h += rows([ORD, CUS, ['Packed (scanned label)', 'បានវេច (ស្លាកដែលស្កេន)'], ['Order line', 'ជួរការកុម្ម៉ង់'], STAFF, WHEN, ''], allowed, i => ['#' + esc(i.order), esc(i.fb || ''), '<b>' + esc(((i.label || '') + ' · ' + i.code).trim()) + '</b>', esc((i.line || '') + ' ' + (i.lineDesc || '')), esc(i.staff || ''), esc(V.when(i.t)), btn(i.id, 'seen', '✓ Seen', '✓ បានឃើញ', 'pri')]) + `<div class="row"><button id="seenall">${bl('✓ Seen all ' + allowed.length, '✓ បានឃើញទាំង ' + allowed.length)}</button></div>`;
+  h += sh('⚖ Staff say the system is wrong', '⚖ បុគ្គលិកថាប្រព័ន្ធខុស', disp.length, 'warn') + `<div class="mut">${bi('Look up the scanned barcode. If PokPok\'s name/colour/size is wrong for that item, it is a catalog problem (fix it in PokPok or with 🔗 Match). Otherwise the wrong item was picked.', 'រកមើលបាកូដដែលបានស្កេន។ បើឈ្មោះ/ពណ៌/ទំហំក្នុង PokPok ខុស នោះជាបញ្ហាបញ្ជីទំនិញ (កែក្នុង PokPok ឬ 🔗 ភ្ជាប់)។ បើមិនដូច្នោះទេ គឺយកទំនិញខុស។')}</div>`;
+  if (disp.length) h += rows([ORD, ['Scanned', 'បានស្កេន'], ['Order needed', 'ការកុម្ម៉ង់ត្រូវការ'], STAFF, WHEN, ''], disp, i => ['#' + esc(i.order), esc((i.label || '') + ' ' + i.code), esc(i.expected), esc(i.disputeBy || i.staff), esc(V.when(i.disputeAt || i.t)), btn(i.id, 'catalog', 'Catalog problem (staff right)', 'បញ្ហាបញ្ជីទំនិញ (បុគ្គលិកត្រូវ)') + ' ' + btn(i.id, 'staff', 'Staff mistake', 'កំហុសបុគ្គលិក')]);
   const byCode = new Map(); unk.forEach(i => { const k = nz(i.code); (byCode.get(k) || byCode.set(k, []).get(k)).push(i); });
-  h += `<h3>Barcodes not in the PokPok list <span class="tag ${byCode.size ? 'bad' : 'ok'}">${byCode.size}</span></h3><div class="mut"><b>PokPok person:</b> add these items, then upload the PokPok list. The issue closes when staff rescan and finish the order.</div>`;
-  if (byCode.size) h += tbl(['Barcode', 'Now', 'Orders waiting', 'Scanned by', 'Last'], [...byCode].map(([k, a]) => [k, P.get(k) ? '✓ now in catalog: ' + P.get(k).label + ' — rescan' : 'still unknown', [...new Set(a.map(i => '#' + i.order))].join(' '), [...new Set(a.map(i => i.staff))].join(', '), V.when(a.map(i => i.t).sort().pop())]));
-  h += `<h3>Orders on hold / missing items <span class="tag ${held.length ? 'warn' : 'ok'}">${held.length}</span></h3>`;
-  if (held.length) h += tbl(['Order', 'Staff', 'When', 'What was missing'], held.map(i => ['#' + i.order, i.staff, V.when(i.t), i.expected || i.reason]));
-  h += `<h3>Wrong items, duplicates and checks <span class="tag ${other.length ? 'warn' : 'ok'}">${other.length}</span></h3>`;
-  if (other.length) h += tbl(['Type', 'Order', 'Scanned', 'Reason', 'Staff', 'When'], other.map(i => [i.type, '#' + i.order, (i.label || '') + ' ' + i.code, i.reason, i.staff, V.when(i.t)]));
-  if (rest.length) h += `<div class="row"><span class="mut">Close all ${fmt(rest.length)} remaining open issue(s) as:</span><select id="issreason"><option value="">— choose a reason —</option><option value="other">Checked by manager</option><option value="mistake">Mistake scans</option></select><input id="issnote" placeholder="Note (required)"><button id="issclear" class="danger">Close all…</button></div>`;
+  h += sh('Barcodes not in the PokPok list', 'បាកូដដែលមិនមានក្នុងបញ្ជី PokPok', byCode.size, 'bad') + `<div class="mut">${bi('<b>PokPok person:</b> add these items, then upload the PokPok list. The issue closes when staff rescan and finish the order.', '<b>អ្នក PokPok៖</b> បន្ថែមទំនិញទាំងនេះ រួចបញ្ចូលបញ្ជី PokPok។ បញ្ហាបិទពេលបុគ្គលិកស្កេនម្តងទៀត ហើយបញ្ចប់ការកុម្ម៉ង់។')}</div>`;
+  if (byCode.size) h += tbl([['Barcode', 'បាកូដ'], ['Now', 'ឥឡូវ'], ['Orders waiting', 'ការកុម្ម៉ង់កំពុងរង់ចាំ'], ['Scanned by', 'ស្កេនដោយ'], ['Last', 'ចុងក្រោយ']], [...byCode].map(([k, a]) => [k, { h: P.get(k) ? bl('✓ now in catalog: ' + esc(P.get(k).label) + ' — rescan', '✓ មានក្នុងបញ្ជីហើយ៖ ' + esc(P.get(k).label) + ' — ស្កេនម្តងទៀត') : bl('still unknown', 'នៅមិនស្គាល់') }, [...new Set(a.map(i => '#' + i.order))].join(' '), [...new Set(a.map(i => i.staff))].join(', '), V.when(a.map(i => i.t).sort().pop())]));
+  h += sh('Orders on hold / missing items', 'ការកុម្ម៉ង់ផ្អាក / ខ្វះទំនិញ', held.length, 'warn');
+  if (held.length) h += tbl([['Order', 'ការកុម្ម៉ង់'], ['Staff', 'បុគ្គលិក'], ['When', 'ពេល'], ['What was missing', 'អ្វីដែលខ្វះ']], held.map(i => ['#' + i.order, i.staff, V.when(i.t), i.expected || i.reason]));
+  h += sh('Wrong items, duplicates and checks', 'ទំនិញខុស ស្ទួន និងការពិនិត្យ', other.length, 'warn');
+  if (other.length) h += tbl([['Type', 'ប្រភេទ'], ['Order', 'ការកុម្ម៉ង់'], ['Scanned', 'បានស្កេន'], ['Reason', 'មូលហេតុ'], ['Staff', 'បុគ្គលិក'], ['When', 'ពេល']], other.map(i => [i.type, '#' + i.order, (i.label || '') + ' ' + i.code, i.reason, i.staff, V.when(i.t)]));
+  if (rest.length) h += `<div class="row"><span class="mut">${bl('Close all ' + fmt(rest.length) + ' remaining open issue(s) as:', 'បិទបញ្ហាដែលនៅសល់ទាំង ' + fmt(rest.length) + ' ជា៖')}</span><select id="issreason"><option value="">${esc(L('— choose a reason —', '— ជ្រើសរើសមូលហេតុ —'))}</option><option value="other">${esc(L('Checked by manager', 'អ្នកគ្រប់គ្រងបានពិនិត្យ'))}</option><option value="mistake">${esc(L('Mistake scans', 'ស្កេនខុស'))}</option></select><input id="issnote" placeholder="${esc(L('Note (required)', 'ចំណាំ (ត្រូវតែមាន)'))}"><button id="issclear" class="danger">${bl('Close all…', 'បិទទាំងអស់…')}</button></div>`;
   el.innerHTML = h;
   $('issref').onclick = drawIssues;
   el.querySelectorAll('[data-act]').forEach(b => b.onclick = async () => {
@@ -1100,8 +1303,8 @@ async function drawIssues() {
   if ($('seenall')) $('seenall').onclick = async () => { await closeIssues(allowed.map(i => i.id), 'seen', ''); drawIssues(); };
   if ($('issclear')) $('issclear').onclick = async () => {
     const r = $('issreason').value, note = clean($('issnote').value);
-    if (!r || !note) { alert('Choose a reason and write a note.'); return; }
-    if (!confirm('Close ' + rest.length + ' open issue(s)?')) return;
+    if (!r || !note) { alert(Lc('Choose a reason and write a note.', 'សូមជ្រើសរើសមូលហេតុ ហើយសរសេរចំណាំ។')); return; }
+    if (!confirm(Lc('Close ' + rest.length + ' open issue(s)?', 'បិទបញ្ហា ' + rest.length + '?'))) return;
     await closeIssues(rest.map(i => i.id), r, note); drawIssues();
   };
 }
@@ -1155,14 +1358,15 @@ async function staffStats(d) {
 }
 $('sdate').value = V.today();
 $('sload').onclick = async () => {
-  const d = $('sdate').value; if (!d) return; $('sres').innerHTML = '<div class="mut">Loading…</div>';
+  const d = $('sdate').value; if (!d) return; $('sres').innerHTML = '<div class="mut">' + bl('Loading…', 'កំពុងផ្ទុក…') + '</div>';
   try {
     const S = await staffStats(d), names = Object.keys(S.per).sort();
-    if (!names.length) { $('sres').innerHTML = '<div class="mut">No scans saved for ' + esc(d) + '.</div>'; return; }
+    if (!names.length) { $('sres').innerHTML = '<div class="mut">' + bl('No scans saved for ' + esc(d) + '.', 'មិនមានការស្កេនសម្រាប់ថ្ងៃ ' + esc(d) + ' ទេ។') + '</div>'; return; }
     const mist = p => Math.max(0, p.wrong + p.dup - p.won - (p.qwon || 0)) + (p.qfree || 0), good = p => p.ok + p.loose + Math.max(0, (p.quirk || 0) - (p.qstaff || 0));
     const pct = p => { const all = good(p) + mist(p); return all ? Math.round(good(p) / all * 1000) / 10 + '%' : '—'; };
-    $('sres').innerHTML = '<div class="mut">' + esc(d) + ' · ' + fmt(S.sessions) + ' order session(s)' + (S.at ? ' · counted ' + esc(V.when(S.at)) : '') + '.<br><b>Staff mistakes</b> = wrong item + duplicate (minus disputes the manager judged a catalog problem). <b>Catalog problems</b> = label not in PokPok / words don’t match — not the staff’s fault. <b>Stock</b> = held or shipped short. <b>Tech quirks</b> = items staff counted as “correct, system quirk” (confirmed / staff mistake / waiting) — a quirk the manager calls a staff mistake counts as a mistake. <b>Accuracy</b> = correct ÷ (correct + staff mistakes).</div>' +
-      tbl(['Staff', 'Orders', 'Completed', 'Correct', 'Staff mistakes', 'Catalog problems', 'Stock: held', 'Stock: shipped short', 'Approved (PIN)', 'Tech quirks (ok/staff/waiting)', 'Disputes (won/lost)', 'Accuracy'], names.map(n => { const p = S.per[n]; return [n, p.orders, p.complete, good(p), mist(p), p.unk + p.chk + p.won, p.hold, p.short, p.ovr, (p.quirk || p.qok || p.qstaff || p.qwait) ? (p.quirk || 0) + ' (' + p.qok + '/' + p.qstaff + '/' + p.qwait + ')' : '—', p.disputes ? p.disputes + ' (' + p.won + '/' + p.lost + ')' : '—', pct(p)]; }));
+    $('sres').innerHTML = '<div class="mut">' + bi(esc(d) + ' · ' + fmt(S.sessions) + ' order session(s)' + (S.at ? ' · counted ' + esc(V.when(S.at)) : '') + '.<br><b>Staff mistakes</b> = wrong item + duplicate (minus disputes the manager judged a catalog problem). <b>Catalog problems</b> = label not in PokPok / words don’t match — not the staff’s fault. <b>Stock</b> = held or shipped short. <b>Tech quirks</b> = items staff counted as “correct, system quirk” (confirmed / staff mistake / waiting) — a quirk the manager calls a staff mistake counts as a mistake. <b>Accuracy</b> = correct ÷ (correct + staff mistakes).',
+      esc(d) + ' · ' + fmt(S.sessions) + ' វគ្គស្កេន' + (S.at ? ' · រាប់ ' + esc(V.when(S.at)) : '') + '។<br><b>កំហុសបុគ្គលិក</b> = ទំនិញខុស + ស្ទួន (ដកការជំទាស់ដែលអ្នកគ្រប់គ្រងថាជាបញ្ហាបញ្ជីទំនិញ)។ <b>បញ្ហាបញ្ជីទំនិញ</b> = ស្លាកមិនមានក្នុង PokPok / ពាក្យមិនដូចគ្នា — មិនមែនកំហុសបុគ្គលិកទេ។ <b>ស្តុក</b> = ផ្អាក ឬផ្ញើខ្វះ។ <b>បញ្ហាបច្ចេកទេស</b> = ទំនិញដែលបុគ្គលិករាប់ថា «ត្រូវ តែប្រព័ន្ធមានបញ្ហា» (បញ្ជាក់ / កំហុសបុគ្គលិក / រង់ចាំ)។ <b>ភាពត្រឹមត្រូវ</b> = ត្រូវ ÷ (ត្រូវ + កំហុសបុគ្គលិក)។') + '</div>' +
+      tbl([['Staff', 'បុគ្គលិក'], ['Orders', 'ការកុម្ម៉ង់'], ['Completed', 'បានបញ្ចប់'], ['Correct', 'ត្រូវ'], ['Staff mistakes', 'កំហុសបុគ្គលិក'], ['Catalog problems', 'បញ្ហាបញ្ជីទំនិញ'], ['Stock: held', 'ស្តុក៖ ផ្អាក'], ['Stock: shipped short', 'ស្តុក៖ ផ្ញើខ្វះ'], ['Approved (PIN)', 'អនុម័ត (PIN)'], ['Tech quirks (ok/staff/waiting)', 'បញ្ហាបច្ចេកទេស (ត្រូវ/បុគ្គលិក/រង់ចាំ)'], ['Disputes (won/lost)', 'ការជំទាស់ (ឈ្នះ/ចាញ់)'], ['Accuracy', 'ភាពត្រឹមត្រូវ']], names.map(n => { const p = S.per[n]; return [n, p.orders, p.complete, good(p), mist(p), p.unk + p.chk + p.won, p.hold, p.short, p.ovr, (p.quirk || p.qok || p.qstaff || p.qwait) ? (p.quirk || 0) + ' (' + p.qok + '/' + p.qstaff + '/' + p.qwait + ')' : '—', p.disputes ? p.disputes + ' (' + p.won + '/' + p.lost + ')' : '—', pct(p)]; }));
   } catch (e) { $('sres').innerHTML = box('bad', esc(nice(e))); }
 };
 
@@ -1206,18 +1410,20 @@ async function scanExport(from, to) {
 }
 const XHEAD = ['Date', 'Order', 'Customer', 'Items', 'Staff', 'Sessions', 'First scan', 'Last scan', 'Result', 'Correct', 'Wrong', 'Duplicate', 'Not in catalog', 'Check', 'PIN approved', 'Tech quirk', 'Through manager', 'Manager status', 'Manager steps', 'Supervisor steps'];
 $('xfrom').value = $('xto').value = V.today();
+const RESULT_KM = { 'Complete': 'រួចរាល់', 'Shipped short': 'ផ្ញើខ្វះ', 'On hold / sent to manager': 'ផ្អាក / ផ្ញើទៅអ្នកគ្រប់គ្រង', 'Left unfinished': 'ទុកមិនទាន់ចប់', 'Unfinished': 'មិនទាន់ចប់', 'Waiting': 'កំពុងរង់ចាំ', 'Done': 'រួចរាល់' };
+const kmOf = t => ({ h: RESULT_KM[t] ? bl(esc(t), esc(RESULT_KM[t])) : esc(t) });
 $('xgo').onclick = async () => {
   const from = $('xfrom').value, to = $('xto').value || from;
-  if (!from || to < from) { $('xinfo').textContent = 'Choose the dates'; return; }
-  if (V.dayShift(from, 31) <= to) { $('xinfo').textContent = 'At most 31 days at a time'; return; }
-  $('xinfo').textContent = 'Loading…'; $('xres').innerHTML = '';
+  if (!from || to < from) { say('xinfo', 'Choose the dates', 'សូមជ្រើសរើសថ្ងៃ'); return; }
+  if (V.dayShift(from, 31) <= to) { say('xinfo', 'At most 31 days at a time', 'អតិបរមា 31 ថ្ងៃក្នុងមួយលើក'); return; }
+  say('xinfo', 'Loading…', 'កំពុងផ្ទុក…'); $('xres').innerHTML = '';
   try {
     const X = await scanExport(from, to), R = X.rows, T = R.filter(r => r.through), cnt = k => R.filter(r => r.row[8] === k).length;
     const name = (from === to ? from : from + '_to_' + to);
-    $('xinfo').textContent = fmt(X.sessions) + ' scan session(s) read';
-    $('xres').innerHTML = `<div class="sum">${cell(R.length, 'orders')}${cell(cnt('Complete'), 'complete', 'ok')}${cell(cnt('Shipped short'), 'shipped short', cnt('Shipped short') ? 'warn' : 'ok')}${cell(R.length - cnt('Complete') - cnt('Shipped short'), 'not finished', 'warn')}${cell(T.length, 'through manager', T.length ? 'bad' : 'ok')}${cell(T.filter(r => r.o.wait).length, 'still waiting for manager', T.some(r => r.o.wait) ? 'bad' : 'ok')}${cell(R.reduce((a, r) => a + r.row[9], 0), 'items scanned correct')}</div>` +
-      `<div class="row"><button class="pri" id="xall">⬇ All ${fmt(R.length)} orders (CSV)</button><button id="xmgr">⬇ Only the ${fmt(T.length)} through manager (CSV)</button></div>` +
-      (T.length ? '<h3>Orders that went through the manager</h3>' + tbl(['Date', 'Order', 'Customer', 'Staff', 'Result', 'Status', 'Manager steps'], T.slice(0, 300).map(r => [r.row[0], '#' + r.row[1], r.row[2], r.row[4], r.row[8], r.row[17], r.row[18]])) : '<div class="mut" style="margin-top:8px">No order went through the manager in these days.</div>');
+    say('xinfo', fmt(X.sessions) + ' scan session(s) read', 'បានអាន ' + fmt(X.sessions) + ' វគ្គស្កេន');
+    $('xres').innerHTML = `<div class="sum">${cell(R.length, 'orders\nការកុម្ម៉ង់')}${cell(cnt('Complete'), 'complete\nរួចរាល់', 'ok')}${cell(cnt('Shipped short'), 'shipped short\nផ្ញើខ្វះ', cnt('Shipped short') ? 'warn' : 'ok')}${cell(R.length - cnt('Complete') - cnt('Shipped short'), 'not finished\nមិនទាន់ចប់', 'warn')}${cell(T.length, 'through manager\nឆ្លងកាត់អ្នកគ្រប់គ្រង', T.length ? 'bad' : 'ok')}${cell(T.filter(r => r.o.wait).length, 'still waiting for manager\nនៅរង់ចាំអ្នកគ្រប់គ្រង', T.some(r => r.o.wait) ? 'bad' : 'ok')}${cell(R.reduce((a, r) => a + r.row[9], 0), 'items scanned correct\nទំនិញស្កេនត្រូវ')}</div>` +
+      `<div class="row"><button class="pri" id="xall">${bl('⬇ All ' + fmt(R.length) + ' orders (CSV)', '⬇ ការកុម្ម៉ង់ទាំង ' + fmt(R.length) + ' (CSV)')}</button><button id="xmgr">${bl('⬇ Only the ' + fmt(T.length) + ' through manager (CSV)', '⬇ តែ ' + fmt(T.length) + ' ដែលឆ្លងកាត់អ្នកគ្រប់គ្រង (CSV)')}</button></div>` +
+      (T.length ? '<h3>' + bl('Orders that went through the manager', 'ការកុម្ម៉ង់ដែលឆ្លងកាត់អ្នកគ្រប់គ្រង') + '</h3>' + tbl([['Date', 'ថ្ងៃ'], ['Order', 'ការកុម្ម៉ង់'], ['Customer', 'អតិថិជន'], ['Staff', 'បុគ្គលិក'], ['Result', 'លទ្ធផល'], ['Status', 'ស្ថានភាព'], ['Manager steps', 'ជំហានអ្នកគ្រប់គ្រង']], T.slice(0, 300).map(r => [r.row[0], '#' + r.row[1], r.row[2], r.row[4], kmOf(r.row[8]), kmOf(r.row[17]), r.row[18]])) : '<div class="mut" style="margin-top:8px">' + bl('No order went through the manager in these days.', 'គ្មានការកុម្ម៉ង់ណាឆ្លងកាត់អ្នកគ្រប់គ្រងក្នុងថ្ងៃទាំងនេះទេ។') + '</div>');
     $('xall').onclick = () => csvDownload('scans-' + name + '.csv', XHEAD, R.map(r => r.row));
     $('xmgr').onclick = () => csvDownload('scans-through-manager-' + name + '.csv', XHEAD, T.map(r => r.row));
   } catch (e) { $('xinfo').textContent = ''; $('xres').innerHTML = box('bad', esc(nice(e))); }
@@ -1226,9 +1432,9 @@ $('xgo').onclick = async () => {
 /* ---------- status ---------- */
 function drawStatus() {
   const m = ST.meta || {}, p = m.pok, v = m.vrich, r0 = RD.list[0], r = r0 && { orders: r0.orders, dates: [r0.d], problemsTotal: r0.bad };
-  $('status').innerHTML = cell(p ? p.count : '—', 'PokPok items' + (p ? ' · ' + V.when(p.at) : ''), p ? 'ok' : 'bad') + cell(v ? v.count : '—', 'Vrich stock codes' + (v ? ' · ' + V.when(v.at) : ''), v ? 'ok' : 'warn') +
-    cell(r ? r.orders || 0 : '—', 'orders · newest day' + (r ? ' · ' + r.dates[0] : ''), r ? 'ok' : 'warn') + cell(r ? (r.problemsTotal != null ? r.problemsTotal : (r.problems || []).length) : '—', 'lines that can’t scan' + (r ? ' · ' + r.dates[0] : ''), r && (r.problemsTotal || (r.problems || []).length) ? 'bad' : 'ok') +
-    cell(p ? (p.by || '').split('@')[0] : '—', 'last PokPok upload by');
+  $('status').innerHTML = cell(p ? p.count : '—', 'PokPok items' + (p ? ' · ' + V.when(p.at) : '') + '\nទំនិញ PokPok' + (p ? ' · ' + V.when(p.at) : ''), p ? 'ok' : 'bad') + cell(v ? v.count : '—', 'Vrich stock codes' + (v ? ' · ' + V.when(v.at) : '') + '\nកូដស្តុក Vrich' + (v ? ' · ' + V.when(v.at) : ''), v ? 'ok' : 'warn') +
+    cell(r ? r.orders || 0 : '—', 'orders · newest day' + (r ? ' · ' + r.dates[0] : '') + '\nការកុម្ម៉ង់ · ថ្ងៃចុងក្រោយ' + (r ? ' · ' + r.dates[0] : ''), r ? 'ok' : 'warn') + cell(r ? (r.problemsTotal != null ? r.problemsTotal : (r.problems || []).length) : '—', 'lines that can’t scan' + (r ? ' · ' + r.dates[0] : '') + '\nជួរដែលស្កេនមិនបាន' + (r ? ' · ' + r.dates[0] : ''), r && (r.problemsTotal || (r.problems || []).length) ? 'bad' : 'ok') +
+    cell(p ? (p.by || '').split('@')[0] : '—', 'last PokPok upload by\nអ្នកបញ្ចូល PokPok ចុងក្រោយ');
 }
 
 /* ---------- settings: staff + supervisors ---------- */
@@ -1237,32 +1443,32 @@ function drawSettings() {
   const S = ST.settings; $('staffl').value = (S.staff || []).join('\n');
   $('synl').value = S.syn == null ? V.SYN_DEFAULT : S.syn; V.setSyn(S.syn);
   $('pricemode').value = S.price === 'off' ? 'off' : 'on';
-  $('suplist').innerHTML = (S.sup || []).length ? '<div class="scroll"><table><tr><th>Supervisor</th><th>PIN set</th><th></th></tr>' + S.sup.map((s, i) => `<tr><td>${esc(s.name)}</td><td>${esc(V.when(s.at))}</td><td><button data-del="${i}" style="min-height:32px">Remove</button></td></tr>`).join('') + '</table></div>' : '<div class="mut">No supervisors yet — without one, staff can only put an order on hold.</div>';
-  $('suplist').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (!confirm('Remove this supervisor?')) return; S.sup.splice(+b.dataset.del, 1); await store.set(COL.meta, 'settings', { sup: S.sup }, true); drawSettings(); });
+  $('suplist').innerHTML = (S.sup || []).length ? '<div class="scroll"><table><tr><th>' + bl('Supervisor', 'អ្នកត្រួតពិនិត្យ') + '</th><th>' + bl('PIN set', 'កំណត់ PIN') + '</th><th></th></tr>' + S.sup.map((s, i) => `<tr><td>${esc(s.name)}</td><td>${esc(V.when(s.at))}</td><td><button data-del="${i}" style="min-height:32px">${bl('Remove', 'ដកចេញ')}</button></td></tr>`).join('') + '</table></div>' : '<div class="mut">' + bi('No supervisors yet — without one, staff can only put an order on hold.', 'មិនទាន់មានអ្នកត្រួតពិនិត្យ — បើគ្មាន បុគ្គលិកអាចត្រឹមតែផ្អាកការកុម្ម៉ង់។') + '</div>';
+  $('suplist').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (!confirm(Lc('Remove this supervisor?', 'ដកអ្នកត្រួតពិនិត្យនេះចេញ?'))) return; S.sup.splice(+b.dataset.del, 1); await store.set(COL.meta, 'settings', { sup: S.sup }, true); drawSettings(); });
 }
 $('synsave').onclick = async () => {
   const txt = $('synl').value.split('\n').map(l => l.split('=').map(clean).filter(Boolean).join(' = ')).filter(l => l.includes('=')).join('\n');
-  $('synmsg').textContent = 'Saving…';
-  try { await store.set(COL.meta, 'settings', { syn: txt }, true); ST.settings.syn = txt; V.setSyn(txt); $('synl').value = txt; await recheckAfterLinks(); $('synmsg').textContent = '✓ Saved · list re-checked'; }
+  say('synmsg', 'Saving…', 'កំពុងរក្សាទុក…');
+  try { await store.set(COL.meta, 'settings', { syn: txt }, true); ST.settings.syn = txt; V.setSyn(txt); $('synl').value = txt; await recheckAfterLinks(); say('synmsg', '✓ Saved · list re-checked', '✓ បានរក្សាទុក · បានពិនិត្យបញ្ជីឡើងវិញ'); }
   catch (e) { $('synmsg').textContent = nice(e); }
 };
 $('pricesave').onclick = async () => {
-  const v = $('pricemode').value === 'off' ? 'off' : 'on'; $('pricemsg').textContent = 'Saving…';
-  try { await store.set(COL.meta, 'settings', { price: v }, true); ST.settings.price = v; await syncDays(); $('pricemsg').textContent = '✓ Price check ' + v.toUpperCase() + ' · phones use it now · days re-checked'; }
+  const v = $('pricemode').value === 'off' ? 'off' : 'on'; say('pricemsg', 'Saving…', 'កំពុងរក្សាទុក…');
+  try { await store.set(COL.meta, 'settings', { price: v }, true); ST.settings.price = v; await syncDays(); say('pricemsg', '✓ Price check ' + v.toUpperCase() + ' · phones use it now · days re-checked', '✓ ការពិនិត្យតម្លៃ ' + (v === 'on' ? 'បើក' : 'បិទ') + ' · ទូរស័ព្ទប្រើភ្លាមៗ · បានពិនិត្យថ្ងៃឡើងវិញ'); }
   catch (e) { $('pricemsg').textContent = nice(e); }
 };
 $('staffsave').onclick = async () => {
   const list = [...new Set($('staffl').value.split('\n').map(clean).filter(Boolean))];
-  try { await store.set(COL.meta, 'settings', { staff: list }, true); ST.settings.staff = list; $('staffmsg').textContent = '✓ Saved (' + list.length + ')'; } catch (e) { $('staffmsg').textContent = nice(e); }
+  try { await store.set(COL.meta, 'settings', { staff: list }, true); ST.settings.staff = list; say('staffmsg', '✓ Saved (' + list.length + ')', '✓ បានរក្សាទុក (' + list.length + ')'); } catch (e) { $('staffmsg').textContent = nice(e); }
 };
 $('supadd').onclick = async () => {
   const name = clean($('supname').value), pin = $('suppin').value.trim();
-  if (!name) { $('supmsg').textContent = 'Type a name'; return; }
-  if (!/^\d{6,}$/.test(pin)) { $('supmsg').textContent = 'PIN must be 6 or more digits'; return; }
+  if (!name) { say('supmsg', 'Type a name', 'សូមវាយឈ្មោះ'); return; }
+  if (!/^\d{6,}$/.test(pin)) { say('supmsg', 'PIN must be 6 or more digits', 'PIN ត្រូវមាន 6 ខ្ទង់ ឬច្រើនជាងនេះ'); return; }
   const S = ST.settings, sup = (S.sup || []).filter(s => s.name.toLowerCase() !== name.toLowerCase());
-  if ((S.sup || []).some(s => s.name.toLowerCase() !== name.toLowerCase() && s.h === V.pinHash(pin, s.salt))) { $('supmsg').textContent = 'Another supervisor already uses this PIN'; return; }
+  if ((S.sup || []).some(s => s.name.toLowerCase() !== name.toLowerCase() && s.h === V.pinHash(pin, s.salt))) { say('supmsg', 'Another supervisor already uses this PIN', 'អ្នកត្រួតពិនិត្យម្នាក់ទៀតប្រើ PIN នេះរួចហើយ'); return; }
   const salt = Math.random().toString(36).slice(2, 10); sup.push({ name, salt, h: V.pinHash(pin, salt), at: V.localNow() });
-  try { await store.set(COL.meta, 'settings', { sup }, true); S.sup = sup; $('suppin').value = ''; $('supname').value = ''; $('supmsg').textContent = '✓ Saved'; drawSettings(); } catch (e) { $('supmsg').textContent = nice(e); }
+  try { await store.set(COL.meta, 'settings', { sup }, true); S.sup = sup; $('suppin').value = ''; $('supname').value = ''; say('supmsg', '✓ Saved', '✓ បានរក្សាទុក'); drawSettings(); } catch (e) { $('supmsg').textContent = nice(e); }
 };
 
 /* ---------- clean-up: keep KEEP_DAYS days ---------- */
@@ -1277,12 +1483,12 @@ async function cleanup() {
   await store.set(COL.meta, 'settings', { lastCleanup: V.today() }, true); if (ST.settings) ST.settings.lastCleanup = V.today();
   return n;
 }
-async function autoCleanup() { if (ST.settings && ST.settings.lastCleanup === V.today()) return; try { const n = await cleanup(); $('cleanmsg').textContent = 'Clean-up today: ' + n + ' old document(s) deleted'; } catch (e) { $('cleanmsg').textContent = 'Clean-up failed: ' + nice(e); } }
-$('cleanup').onclick = async () => { $('cleanmsg').textContent = 'Cleaning…'; try { const n = await cleanup(); $('cleanmsg').textContent = '✓ ' + n + ' old document(s) deleted'; } catch (e) { $('cleanmsg').textContent = nice(e); } };
-$('keepd').textContent = V.KEEP_DAYS;
+async function autoCleanup() { if (ST.settings && ST.settings.lastCleanup === V.today()) return; try { const n = await cleanup(); say('cleanmsg', 'Clean-up today: ' + n + ' old document(s) deleted', 'សម្អាតថ្ងៃនេះ៖ បានលុបឯកសារចាស់ ' + n); } catch (e) { say('cleanmsg', 'Clean-up failed: ' + nice(e), 'សម្អាតមិនបានសម្រេច៖ ' + nice(e)); } }
+$('cleanup').onclick = async () => { say('cleanmsg', 'Cleaning…', 'កំពុងសម្អាត…'); try { const n = await cleanup(); say('cleanmsg', '✓ ' + n + ' old document(s) deleted', '✓ បានលុបឯកសារចាស់ ' + n); } catch (e) { $('cleanmsg').textContent = nice(e); } };
+$('keepd').textContent = V.KEEP_DAYS; document.querySelectorAll('.keepd').forEach(e => { e.textContent = V.KEEP_DAYS; });
 
 /* ---------- Firebase config ---------- */
-function saveCfg(txt, msgEl) { const c = V.parseConfig(txt); if (!c) { if (msgEl) msgEl.textContent = 'Could not find apiKey and projectId in what you pasted.'; else alert('Could not find apiKey and projectId.'); return; } V.LS.set('fbconfig', c); location.reload(); }
+function saveCfg(txt, msgEl) { const c = V.parseConfig(txt); if (!c) { if (msgEl) say(msgEl, 'Could not find apiKey and projectId in what you pasted.', 'រកមិនឃើញ apiKey និង projectId ក្នុងអ្វីដែលបានបិទភ្ជាប់ទេ។'); else alert(Lc('Could not find apiKey and projectId.', 'រកមិនឃើញ apiKey និង projectId ទេ។')); return; } V.LS.set('fbconfig', c); location.reload(); }
 $('cfgsave').onclick = () => saveCfg($('cfgtxt').value, $('cfgmsg'));
 $('cfgsave2').onclick = () => saveCfg($('cfgtxt2').value);
 $('cfgreset').onclick = () => { V.LS.del('fbconfig'); location.reload(); };
@@ -1291,12 +1497,12 @@ $('cfgreset').onclick = () => { V.LS.del('fbconfig'); location.reload(); };
 async function start() {
   $('app').classList.remove('hide'); $('login').classList.add('hide');
   $('who').textContent = ST.user.email; $('logout').classList.remove('hide'); $('dot').className = 'dot on';
-  $('cfginfo').textContent = 'Connected to ' + (store.projectId || 'test store') + '.';
+  say('cfginfo', 'Connected to ' + (store.projectId || 'test store') + '.', 'បានភ្ជាប់ទៅ ' + (store.projectId || 'test store') + '។');
   try {
     ST.meta = (await store.get(COL.cat, 'meta')) || {};
     await loadDays();
     await loadSettings(); await loadLinks();
-  } catch (e) { $('status').innerHTML = box('bad', 'Could not read Firestore: ' + esc(nice(e))); return; }
+  } catch (e) { $('status').innerHTML = msg('bad', 'Could not connect to the online data', 'មិនអាចភ្ជាប់ទៅទិន្នន័យលើប្រព័ន្ធបានទេ', esc(nice(e)) + bi('', 'សូមពិនិត្យអ៊ីនធឺណិត ហើយបើកទំព័រនេះម្តងទៀត។')); return; }
   drawStatus(); drawReady(); if (RD.sel) openDay(RD.sel).then(() => { if (RD.list.some(o => o.stamp !== rdStamp())) syncDays(); });
   drawIssues();
   // live: new ship-short requests show up without refreshing
@@ -1304,7 +1510,8 @@ async function start() {
   store.watchQuery(COL.issues, [['status', '==', 'open']], docs => {
     if (!docs) return;
     const rpk = docs.filter(d => d.data.type === 'repackreq').length, reqs = docs.filter(d => d.data.type === 'shortreq' && d.data.to !== 'sup').length, sreqs = docs.filter(d => d.data.type === 'shortreq' && d.data.to === 'sup').length, qk = docs.filter(d => d.data.type === 'quirk').length, al = docs.filter(d => d.data.type === 'allowed').length, sig = docs.map(d => d.id + d.data.type + (d.data.count || '')).join();
-    $('reqbanner').innerHTML = rpk || reqs || sreqs || qk || al ? box(rpk || reqs || qk ? 'bad' : 'warn', [rpk ? `🔁 <b>${rpk}</b> pack-again request(s) — order already packed` : '', reqs ? `⏳ <b>${reqs}</b> ship-short request(s) waiting for your approval` : '', sreqs ? `👤 <b>${sreqs}</b> waiting for a supervisor` : '', qk ? `⚡ <b>${qk}</b> technical quirk(s) to check` : '', al ? `✓ <b>${al}</b> item(s) packed as អីវ៉ាន់ចម្រុះ (mixed)` : ''].filter(Boolean).join(' · ') + ` — <a href="#" id="reqgo" style="color:inherit">open</a>`) : '';
+    $('reqbanner').innerHTML = rpk || reqs || sreqs || qk || al ? box(rpk || reqs || qk ? 'bad' : 'warn', bi([rpk ? `🔁 <b>${rpk}</b> pack-again request(s) — order already packed` : '', reqs ? `⏳ <b>${reqs}</b> ship-short request(s) waiting for your approval` : '', sreqs ? `👤 <b>${sreqs}</b> waiting for a supervisor` : '', qk ? `⚡ <b>${qk}</b> technical quirk(s) to check` : '', al ? `✓ <b>${al}</b> item(s) packed as Mixed (អីវ៉ាន់ចម្រុះ)` : ''].filter(Boolean).join(' · '),
+      [rpk ? `🔁 <b>${rpk}</b> សំណើវេចម្តងទៀត — ការកុម្ម៉ង់បានវេចរួច` : '', reqs ? `⏳ <b>${reqs}</b> សំណើផ្ញើខ្វះ កំពុងរង់ចាំការអនុម័តរបស់អ្នក` : '', sreqs ? `👤 <b>${sreqs}</b> កំពុងរង់ចាំអ្នកត្រួតពិនិត្យ` : '', qk ? `⚡ <b>${qk}</b> បញ្ហាបច្ចេកទេសត្រូវពិនិត្យ` : '', al ? `✓ <b>${al}</b> ទំនិញវេចជាអីវ៉ាន់ចម្រុះ` : ''].filter(Boolean).join(' · ')) + ` <a href="#" id="reqgo" style="color:inherit">${bl('open', 'បើក')}</a>`) : '';
     if ($('reqgo')) $('reqgo').onclick = e => { e.preventDefault(); $('t-iss').click(); $('p-iss').scrollIntoView(); };
     $('issn').textContent = docs.length ? '(' + docs.length + ')' : '';
     if (sig !== lastSig) { lastSig = sig; const typing = document.activeElement && $('p-iss').contains(document.activeElement) && document.activeElement.tagName === 'INPUT'; if (!$('p-iss').classList.contains('hide') && !typing) drawIssues(); }
@@ -1316,7 +1523,7 @@ else {
     if (u && !u.anon) { ST.user = u; start(); }
     else { ST.user = null; $('app').classList.add('hide'); $('login').classList.remove('hide'); $('logout').classList.add('hide'); $('who').textContent = ''; }
   });
-  $('lgo').onclick = async () => { $('lmsg').textContent = 'Logging in…'; try { await store.auth.email($('lemail').value.trim(), $('lpass').value); $('lmsg').textContent = ''; } catch (e) { $('lmsg').textContent = 'Login failed: ' + (e.code || e.message); } };
+  $('lgo').onclick = async () => { say('lmsg', 'Logging in…', 'កំពុងចូល…'); try { await store.auth.email($('lemail').value.trim(), $('lpass').value); $('lmsg').textContent = ''; } catch (e) { say('lmsg', 'Login failed (check email and password): ' + (e.code || e.message), 'ចូលមិនបាន (ពិនិត្យអ៊ីមែល ឬពាក្យសម្ងាត់)៖ ' + (e.code || e.message)); } };
   $('lpass').addEventListener('keydown', e => { if (e.key === 'Enter') $('lgo').click(); });
   $('logout').onclick = () => store.auth.out();
 }
