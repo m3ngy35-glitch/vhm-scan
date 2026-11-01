@@ -20,6 +20,9 @@
      Settings are now watched live. The ORDER COMPLETE card shows 💲 the total of the scanned items (order price × pieces).
      2.2 (24 Oct 2026): brought up to the latest VH Shop Scan Verify 1.2 (notes above) keeping the VHM project, collections, light theme
      and the VHM size-in-code rule (only a 2-digit size 26–46 is split off, so PokPok's forced sizes "-1"/"-5" never match by accident).
+     2.4 (1 Nov 2026): 🔀 Choose the item — a label number used by several PokPok items (one item's Barcode is another item's Code,
+     or two items share a barcode) no longer counts as the Code's owner automatically: when one of them could be in the open order,
+     staff tap the item in their hand, then the normal checks run for that item. The scan log keeps which item was picked.
      2.3 (27 Oct 2026): ⛔ ALREADY PACKED — an order that was scanned complete (on any phone, checked in sv2_log) is blocked; packing it
      again needs the manager (upload page → 🔁 Pack again) or a supervisor PIN, with a reason. The approval is used up when it is complete again. -->
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;700&display=swap" rel="stylesheet">
@@ -692,7 +695,7 @@ function renderLog() {
   renderQ();
 }
 function record(r, code, extra) {
-  const e = { t: localNow(), staff: $('staff').value.trim(), order: cur ? cur.id : '', code, r, ...(extra || {}) };
+  const e = { t: localNow(), staff: $('staff').value.trim(), order: cur ? cur.id : '', code, r, ...(PICKED ? { picked: PICKED } : {}), ...(extra || {}) };
   log.push(e); if (log.length > 30000) log = log.slice(-30000);
   LS.set('scanlog', log); sessAdd(code, r);
 }
@@ -702,7 +705,16 @@ let pok = new Map(), pokRows = [], pokBySale = new Map(), ATTRW = new Set();    
 const CAT = { ver: '', count: 0, at: '', by: '', source: 'none', err: '', busy: null, metaVer: '' };
 let LINKS = V.linksParse(LS.get('links', '')), LOOSE = V.looseParse(LS.get('loose', ''));
 let FRESH = new Set(), FRESH_VER = '', CONF = new Set();
+/* 🔀 label numbers used by more than one PokPok item (e.g. U108's barcode P0003963 is also R215's own Code, or two items share
+ * one barcode): number -> every item it can mean. When one of them could be in the open order, staff choose the item in their hand. */
+let PALT = new Map();
+function buildAlt(recs) {
+  const m = new Map(), add = (k, r) => { if (!k) return; const a = m.get(k) || m.set(k, []).get(k); if (!a.some(x => nz(x[0]) === nz(r[0]))) a.push(r); };
+  recs.forEach(r => { add(nz(r[0]), r); if (r[1]) add(nz(r[1]), r); });
+  const out = new Map(); m.forEach((a, k) => { if (a.length > 1) out.set(k, a.map(V.pokInfo)); }); return out;
+}
 function catAdopt(obj, source) {
+  PALT = buildAlt(obj.records);
   pokRows = obj.records; pok = V.buildPok(obj.records); pokBySale = V.bySale(obj.records); ATTRW = new Set(); obj.records.forEach(r => V.toks(r[3]).forEach(t => ATTRW.add(V.syn.get(t) || t)));
   Object.assign(CAT, { ver: obj.ver, count: obj.count, at: obj.at, by: obj.by, source, err: '' });
   catChip(); renderIssues();
@@ -1151,6 +1163,27 @@ function quirkOk() {
   afterCount(o, it, '⚡ COUNTED — the manager will check this quirk');
 }
 
+/* ---------- 🔀 one label number, several PokPok items: staff choose the item in their hand ---------- */
+let PICKED = '';
+// could this PokPok item count for an open line of the order? (same product, or a manager 🔗 link to one of its stock codes)
+function altFits(o, c) {
+  const lk = LINKS.get(nz(c.code));
+  return o.items.some((it, i) => G(i) < it.qty && ((lk && nz(it.stock) === nz(lk.stock)) || lineRel(it, c).rel));
+}
+function showPick(o, code, alts) {
+  ACT = { kind: 'pick', code, alts };
+  $('act').className = 'on';
+  $('act').innerHTML = `<h3>🔀 Which item is in your hand? · ទំនិញណានៅក្នុងដៃ?</h3><div class="mut">Label <b>${esc(code)}</b> is used by ${alts.length} products in PokPok. Look at the item and tap the one you are holding. · ស្លាក <b>${esc(code)}</b> ប្រើលើទំនិញ ${alts.length} ក្នុង PokPok។ មើលទំនិញ ហើយចុចទំនិញដែលនៅក្នុងដៃ។</div>` +
+    `<div class="lines">${alts.map((c, k) => `<button data-k="${k}" style="min-height:56px;font-size:17px"><b>${esc(c.label || c.code)}</b>` + (altFits(o, c) ? ' <span style="font-size:13px;color:#15803d;font-weight:700">· in this order · មានក្នុង Order</span>' : '') + `<br><span class="mut" style="font-size:12px">${esc(c.code)}${c.price != null ? ' · 💲' + esc(V.money(c.price)) : ''}</span></button>`).join('')}</div>` +
+    `<div class="two" style="grid-template-columns:1fr"><button id="pkCancel" style="min-height:48px;font-size:16px">Cancel · បោះបង់</button></div>`;
+  setStatus('warn', '🔀 CHOOSE THE ITEM · ជ្រើសរើសទំនិញ', `Label <b>${esc(code)}</b> is on ${alts.length} products — tap the item you are holding below`); sWarn(); buzz([60, 40, 60]);
+  $('act').querySelectorAll('.lines button').forEach(b => b.onclick = async () => {
+    if (!ACT || ACT.kind !== 'pick') return; const a = ACT, c = a.alts[+b.dataset.k]; hideAct();
+    PICKED = c.code; try { await handleScan(a.code, c); } finally { PICKED = ''; } focusScan();
+  });
+  $('pkCancel').onclick = () => { hideAct(); setStatus('', 'Scan the item again · ស្កេនទំនិញម្តងទៀត', ''); focusScan(); };
+}
+
 /* ---------- 💲 price check: the PokPok price on the label must be the Vrich order price of the line (per piece) ---------- */
 function priceOk(o, idx, code, info) {
   if (SETTINGS.price === 'off' || !info || info.price == null) return true;
@@ -1213,9 +1246,9 @@ function pokMatch(o, info) {
   if (new Set(pick.map(i => nz(o.items[i].desc))).size > 1) return { idx: -1, state: 'ambig' };
   return { idx: pick[0], state: 'ok' };
 }
-async function handleScan(raw) {
+async function handleScan(raw, picked) {
   const code = norm(raw); if (!code) return;
-  if (ACT && (ACT.kind === 'confirm' || ACT.kind === 'aconfirm')) { hideAct(); }
+  if (ACT && (ACT.kind === 'confirm' || ACT.kind === 'aconfirm' || ACT.kind === 'pick')) { hideAct(); }
   else if (ACT && ACT.kind !== 'aok') return;        // supervisor panel open: ignore scans ('aok' = re-run after ✓ check by eye)
   await pokReady; if (CAT.busy) await CAT.busy;
   if (starting) { setStatus('warn', 'Wait · checking order #' + starting, 'Scan again in a second'); sWarn(); return; }
@@ -1228,7 +1261,10 @@ async function handleScan(raw) {
 
   pendingNext = null;
   const o = orders[cur.id], open = i => G(i) < o.items[i].qty;
-  const info = pok.get(code); let why = 'unknown', label = null, linkedDone = false;
+  // 🔀 this label number is on several PokPok items and one of them could belong to this order: staff choose the item in their hand
+  const alts = picked ? null : PALT.get(code);
+  if (alts && alts.some(c => altFits(o, c))) { showPick(o, code, alts); return; }
+  const info = picked || pok.get(code); let why = 'unknown', label = null, linkedDone = false;
   // 0) a manager link (upload page → 🔗 Match): this PokPok item IS that Vrich stock code
   const lk = info && !info.ambiguous ? LINKS.get(nz(info.code)) : null;
   if (lk) {
@@ -1291,7 +1327,8 @@ async function handleScan(raw) {
   const head = why === 'wrongvariant' ? `${name} — right product, WRONG size/colour`
             : label ? `${name} — not in this order`
             : `${name} is not in the product catalog. It may be a new product the manager has not uploaded yet, or a wrong item — check it by eye. Nothing was counted. Tap ⏸ Hold if the order must wait.`;
-  setStatus('bad', unk ? '? NOT IN CATALOG · មិនមានក្នុងបញ្ជីទំនិញ' : '✗ WRONG ITEM · ខុសទំនិញ', `<span class="big">${esc(code)}</span><br>` + head + '<br>' + expectedText(o) + (unk || why === 'wrongvariant' ? supButton(code, label) : '') + quirkButton(code, label, unk ? 'unk' : 'wrong'));
+  const altTxt = !picked && PALT.has(code) ? '<br>🔀 This label number is on ' + PALT.get(code).length + ' products · លេខស្លាកនេះមានលើទំនិញ ' + PALT.get(code).length + ': ' + PALT.get(code).map(c => '<b>' + esc(c.label) + '</b>').join(' · ') : '';
+  setStatus('bad', unk ? '? NOT IN CATALOG · មិនមានក្នុងបញ្ជីទំនិញ' : '✗ WRONG ITEM · ខុសទំនិញ', `<span class="big">${esc(code)}</span><br>` + head + altTxt + '<br>' + expectedText(o) + (unk || why === 'wrongvariant' ? supButton(code, label) : '') + quirkButton(code, label, unk ? 'unk' : 'wrong'));
   addIssue('wrong', code, label || '', plain(head), plain(expectedText(o))); render(true);
 }
 
