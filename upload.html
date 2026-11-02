@@ -254,6 +254,15 @@ html[data-lang=km] .top h1 .bl>.km{font-size:inherit;font-weight:inherit;color:i
       </div>
     </div>
 
+    <!-- ===== 🗺 PokPok ↔ Vrich map (for stock counting) ===== -->
+    <div class="card" id="mapcard">
+      <h2><span class="bi"><span class="en">🗺 PokPok ↔ Vrich map</span><span class="km">🗺 ផែនទី PokPok ↔ Vrich</span></span></h2>
+      <div class="mut"><span class="bi"><span class="en">Which Vrich stock code each PokPok label is. Download it for Excel / VHM Inventory, or as the map file for the Stock Count page (scan PokPok labels → counts for PokPok and Vrich). Uses the lists online now and your 🔗 links.</span><span class="km">ស្លាក PokPok នីមួយៗ ត្រូវនឹងកូដស្តុក Vrich មួយណា។ ទាញយកសម្រាប់ Excel / VHM Inventory ឬជាឯកសារផែនទីសម្រាប់ទំព័ររាប់ស្តុក (ស្កេនស្លាក PokPok → ចំនួនសម្រាប់ PokPok និង Vrich)។ ប្រើបញ្ជីដែលមាននៅលើប្រព័ន្ធ និង 🔗 តំណរបស់អ្នក។</span></span></div>
+      <div class="row"><button id="mapgo"><span class="bl"><span class="en">Build the map</span><span class="km">បង្កើតផែនទី</span></span></button></div>
+      <div id="mappub" class="mut" style="margin-top:6px"></div>
+      <div id="mapres"></div>
+    </div>
+
     <!-- ===== to-fix ===== -->
     <div class="card">
       <h2><span class="bi"><span class="en">To fix</span><span class="km">ត្រូវកែ</span></span></h2>
@@ -1007,7 +1016,7 @@ async function uploadPok() {
     slotMsg('pok', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(
       (SL.pok.partial ? `Added ${fmt(D.added.length)}, updated ${fmt(D.changed.length + D.priced.length)} · ` : '') + `${fmt(info.count)} items online · version ${esc(info.ver)}. Phones switch to it automatically.` + (fresh.length ? ` The first scan of each of the ${fmt(fresh.length)} new/changed item(s) asks staff to confirm the item.` : ''),
       (SL.pok.partial ? `បានបន្ថែម ${fmt(D.added.length)} · បានកែ ${fmt(D.changed.length + D.priced.length)} · ` : '') + `មាន ${fmt(info.count)} មុខទំនិញនៅលើប្រព័ន្ធ។ ទូរស័ព្ទប្តូរទៅប្រើបញ្ជីថ្មីដោយស្វ័យប្រវត្តិ។` + (fresh.length ? ` ពេលស្កេនទំនិញថ្មី/បានប្តូរ ${fmt(fresh.length)} មុខលើកដំបូង បុគ្គលិកត្រូវបញ្ជាក់ទំនិញ។` : ''))));
-    drawStatus(); drawCat(); drawIssues();
+    drawStatus(); drawCat(); drawIssues(); autoPublishMap();
   } catch (err) { slotMsg('pok', saveFail(err)); }
 }
 
@@ -1028,7 +1037,7 @@ $('f-vrich').onchange = async e => {
     slotMsg('vrich', h);
     if ($('vgo')) $('vgo').onclick = async () => {
       $('vgo').disabled = true; progress('vrich', 'Uploading Vrich stock… please wait\nកំពុងបញ្ចូលស្តុក Vrich… សូមរង់ចាំ');
-      try { const info = await publishCatalog('vrich', A.recs, f.name, { info: { excluded: A.excluded.slice(0, 300).map(([it, why]) => it.row + '\t' + it.code + '\t\t' + why) } }); slotMsg('vrich', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(`${fmt(info.count)} stock codes online.`, `មាន ${fmt(info.count)} កូដស្តុកនៅលើប្រព័ន្ធ។`))); drawStatus(); drawCat(); }
+      try { const info = await publishCatalog('vrich', A.recs, f.name, { info: { excluded: A.excluded.slice(0, 300).map(([it, why]) => it.row + '\t' + it.code + '\t\t' + why) } }); slotMsg('vrich', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(`${fmt(info.count)} stock codes online.`, `មាន ${fmt(info.count)} កូដស្តុកនៅលើប្រព័ន្ធ។`))); drawStatus(); drawCat(); autoPublishMap(); }
       catch (err) { slotMsg('vrich', saveFail(err)); }
     };
   } catch (err) { slotMsg('vrich', await fileErr(f, err)); }
@@ -1182,7 +1191,7 @@ function wireLinks() {
     ST.links.delete(nz(b.dataset.unlink)); try { await saveLinks(); await recheckAfterLinks(); } catch (e) { alert(nice(e)); }
   });
 }
-async function recheckAfterLinks() { await syncDays(); }      // Same words / 🔗 links changed: re-check every day
+async function recheckAfterLinks() { await syncDays(); autoPublishMap(); }      // Same words / 🔗 links changed: re-check every day
 async function openMatch(sale) {
   const mb = $('matchbox'); mb.innerHTML = '<div class="mut">' + bl('Loading…', 'កំពុងផ្ទុក…') + '</div>'; mb.scrollIntoView({ block: 'center' });
   let pok = null, vr = null; try { pok = await currentCatalog('pok'); vr = await currentCatalog('vrich'); } catch (e) { mb.innerHTML = box('bad', esc(e.message)); return; }
@@ -1249,6 +1258,114 @@ async function drawCat() {
     if (k === 'pno') csvDownload('pokpok-not-in-vrich.csv', ['PokPok code', 'Barcode', 'Name', 'Attributes', 'Qty'], pNo);
     if (k === 'bar') csvDownload('pokpok-barcode-problems.csv', ['Barcode', 'Problem', 'Items'], W.map(w => [w.bar, w.kind, w.items.join(' | ')]));
   });
+}
+/* ---------- 🗺 PokPok ↔ Vrich map (for stock counting): one PokPok item -> one Vrich stock code, as strict as possible ----------
+ * PokPok record [code, barcode, name, attrs, qty, price] · Vrich record [saleCode, stockCode, desc, size, color, qty]
+ * 1) Vrich stock code -> the PokPok items whose colour/size words fit it (the scanner's rule); when several fit, the one whose
+ *    words are exactly the Vrich words wins. 2) PokPok item -> the Vrich codes it was given; several -> the exact-words one wins.
+ * 3) a manager 🔗 link always wins. Status: ok · linked · shared (one Vrich code, several PokPok items) · several (several Vrich
+ *    codes fit) · none (no Vrich code) — and Vrich-only rows: nopok (no PokPok item has the sale code) · words (words differ). */
+const vdesc = r => r[2] || [r[3], r[4]].filter(Boolean).join(' ');
+function buildStockMap(pokRecs, vrRecs, links) {
+  const bySale = V.bySale(pokRecs), cn = t => V.syn.get(t) || t;
+  const wordsOf = s => new Set([...V.toks(s)].map(cn));
+  const exact = (pw, vw) => { const vNum = [...vw].some(t => /^\d+$/.test(t)); const a = [...pw].filter(t => vNum || !/^\d+$/.test(t)); return a.length === vw.size && a.every(t => vw.has(t)); };
+  const pw = i => new Set([...i.rest, ...i.attrs].map(cn));
+  const vw = r => wordsOf(r[2] || [r[3], r[4]].filter(Boolean).join(' '));
+  const p2v = new Map(), vRows = new Map(), vonly = [];
+  vrRecs.forEach(r => {
+    if (!r[1]) return;
+    const it = { code: r[0], desc: r[2], size: r[3], color: r[4] }, s = V.lineState(bySale, null, it);
+    let fit = s.st === 'ok' ? s.fit : [];
+    if (fit.length > 1) { const W = vw(r), ex = fit.filter(i => exact(pw(i), W)); if (ex.length === 1) fit = ex; }
+    vRows.set(nz(r[1]), r);
+    if (!fit.length) { vonly.push([r[1], r[0], vdesc(r), s.st === 'nosale' ? 'nopok' : 'words']); return; }
+    fit.forEach(i => { const k = nz(i.code); (p2v.get(k) || p2v.set(k, []).get(k)).push(r); });
+  });
+  const pairs = new Map();            // pok code -> { v: vrich record | null, st }
+  pokRecs.forEach(p => {
+    const k = nz(p[0]), lk = links && links.get(k);
+    if (lk) { pairs.set(k, { v: vRows.get(nz(lk.stock)) || [V.saleOf(p[2]).sale, lk.stock, '(linked)', '', '', null], st: 'linked' }); return; }
+    let a = p2v.get(k) || [];
+    if (a.length > 1) { const P = pw(V.pokInfo(p)), ex = a.filter(r => exact(P, vw(r))); if (ex.length === 1) a = ex; }
+    pairs.set(k, a.length === 1 ? { v: a[0], st: 'ok' } : a.length ? { v: null, st: 'several', cands: a } : { v: null, st: 'none' });
+  });
+  // one Vrich code taken by several PokPok items (not links: the manager chose those on purpose)
+  const used = new Map(); pairs.forEach((x, k) => { if (x.st === 'ok') { const s = nz(x.v[1]); used.set(s, (used.get(s) || 0) + 1); } });
+  pairs.forEach(x => { if (x.st === 'ok' && used.get(nz(x.v[1])) > 1) x.st = 'shared'; });
+  // Vrich codes that no PokPok item ended up with
+  const taken = new Set(); pairs.forEach(x => { if (x.v) taken.add(nz(x.v[1])); });
+  vRows.forEach((r, s) => { if (!taken.has(s) && !vonly.some(v => nz(v[0]) === s)) vonly.push([r[1], r[0], vdesc(r), 'unpicked']); });
+  const items = pokRecs.map(p => { const x = pairs.get(nz(p[0])); return [p[0], p[1] || '', p[2], p[3], p[4] == null ? null : p[4], p[5] == null ? null : p[5], x.v ? x.v[1] : '', x.v ? x.v[0] : V.saleOf(p[2]).sale, x.v ? vdesc(x.v) : (x.cands ? x.cands.map(r => r[1] + ' ' + r[2]).join(' | ') : ''), x.st]; });
+  const n = {}; items.forEach(i => { n[i[9]] = (n[i[9]] || 0) + 1; }); vonly.forEach(v => { n['v_' + v[3]] = (n['v_' + v[3]] || 0) + 1; });
+  return { items, vonly, n };
+}
+const MAP_ST = {
+  ok: ['Matched', 'ត្រូវគ្នា'], linked: ['Matched by 🔗 link', 'ត្រូវគ្នាតាម 🔗 តំណ'],
+  shared: ['Matched · 1 Vrich code has several PokPok items', 'ត្រូវគ្នា · កូដ Vrich មួយមានទំនិញ PokPok ច្រើន'],
+  several: ['Several Vrich codes fit — Vrich person merges the duplicates', 'កូដ Vrich ច្រើនត្រូវគ្នា — អ្នក Vrich បញ្ចូលកូដស្ទួនជាមួយគ្នា'],
+  none: ['No Vrich code', 'គ្មានកូដ Vrich'],
+  nopok: ['Vrich only — no PokPok item has this sale code', 'មានតែក្នុង Vrich — គ្មានទំនិញ PokPok'],
+  words: ['Vrich only — colour/size words differ from PokPok', 'មានតែក្នុង Vrich — ពាក្យពណ៌/ទំហំខុសពី PokPok'],
+  unpicked: ['Vrich code not used — duplicate variant in Vrich?', 'កូដ Vrich មិនបានប្រើ — ប្រភេទស្ទួនក្នុង Vrich?']
+};
+/* ---------- 🔌 the map online: VHM Inventory (📍 Locations), Stock Take and the Stock Count page read it from here ----------
+ * sv2_meta/stockmap = { ver, parts, count, fp, at, by } · sv2_catalog/map_<ver>_<i> = the map, gzip, in parts (same format as the catalogs).
+ * Published automatically after a PokPok or Vrich upload and after 🔗 links / Same words change — and only when the map
+ * really changed (fp). Readers check the small sv2_meta/stockmap doc (1 read per open) and download the parts only for a new ver. */
+const MAP_PTR = 'stockmap';
+async function publishMap(M, pok, vr) {
+  const fp = V.quick(JSON.stringify([M.items, M.vonly]));
+  const prev = await store.get(COL.meta, MAP_PTR);
+  if (prev && prev.fp === fp && prev.count === M.items.length) return { same: true, ptr: prev };
+  const out = { schema: 'vhm-stock-map', v: 1, at: V.localNow(), by: ST.user.email, pok: { ver: pok.ver, at: pok.at, count: pok.count }, vrich: { ver: vr.ver, at: vr.at, count: vr.count },
+    fields: ['pokCode', 'barcode', 'name', 'attrs', 'pokQty', 'price', 'vrichStock', 'sale', 'vrichDesc', 'status'], items: M.items, vonly: M.vonly };
+  const ver = 'm' + Date.now().toString(36), parts = V.split(V.pack(out));
+  for (let i = 0; i < parts.length; i++) await store.set(COL.cat, 'map_' + ver + '_' + i, { ver, i, n: parts.length, data: store.blob(parts[i]) });
+  const ptr = { ver, parts: parts.length, count: M.items.length, fp, at: out.at, by: out.by, pokAt: pok.at, vrAt: vr.at };
+  await store.set(COL.meta, MAP_PTR, ptr);              // readers switch to the new map only now, when every part is saved
+  if (prev && prev.ver && prev.ver !== ver) { const ops = []; for (let i = 0; i < (prev.parts || 0); i++) ops.push({ op: 'del', col: COL.cat, id: 'map_' + prev.ver + '_' + i }); try { await store.batch(ops); } catch (e) {} }
+  return { ptr };
+}
+function mapPubMsg(r, err) {
+  const el = $('mappub'); if (!el) return;
+  if (err) { el.innerHTML = '<b style="color:#b91c1c">' + bl('🔌 The online map was not updated: ' + esc(nice(err)), '🔌 ផែនទីលើប្រព័ន្ធមិនបានធ្វើបច្ចុប្បន្នភាព៖ ' + esc(nice(err))) + '</b>'; return; }
+  if (!r || !r.ptr) { el.innerHTML = bl('🔌 No map online yet — it is published after the PokPok and Vrich lists are both uploaded.', '🔌 មិនទាន់មានផែនទីលើប្រព័ន្ធ — វានឹងចេញបន្ទាប់ពីបញ្ចូលបញ្ជី PokPok និង Vrich។'); return; }
+  const p = r.ptr;
+  el.innerHTML = '🔌 ' + bi(`Online for VHM Inventory, Stock Take and Stock Count: map of ${fmt(p.count)} items · ${esc(V.when(p.at))}` + (r.same ? ' · already up to date' : ' · ✓ just published'), `នៅលើប្រព័ន្ធសម្រាប់ VHM Inventory, Stock Take និងរាប់ស្តុក៖ ផែនទី ${fmt(p.count)} មុខ · ${esc(V.when(p.at))}` + (r.same ? ' · ទាន់សម័យហើយ' : ' · ✓ ទើបតែផ្សព្វផ្សាយ'));
+}
+// rebuild + publish after anything that changes the map; never stops the upload that called it
+async function autoPublishMap() {
+  try {
+    const pok = await currentCatalog('pok'), vr = await currentCatalog('vrich');
+    if (!pok || !vr) { mapPubMsg(null); return; }
+    mapPubMsg(await publishMap(buildStockMap(pok.records, vr.records, ST.links), pok, vr));
+  } catch (e) { mapPubMsg(null, e); }
+}
+async function drawMap() {
+  const el = $('mapres');
+  el.innerHTML = '<div class="mut">' + bl('Building the map…', 'កំពុងបង្កើតផែនទី…') + '</div>';
+  let pok = null, vr = null; try { pok = await currentCatalog('pok'); vr = await currentCatalog('vrich'); } catch (e) { el.innerHTML = box('bad', esc(e.message)); return; }
+  if (!pok || !vr) { el.innerHTML = msg('warn', 'Upload both lists first', 'សូមបញ្ចូលបញ្ជីទាំងពីរជាមុនសិន', bi('The map needs the PokPok list (box 1) and the Vrich stock list (box 2).', 'ផែនទីត្រូវការបញ្ជី PokPok (ប្រអប់ទី 1) និងបញ្ជីស្តុក Vrich (ប្រអប់ទី 2)។')); return; }
+  const M = buildStockMap(pok.records, vr.records, ST.links), n = M.n, good = (n.ok || 0) + (n.linked || 0) + (n.shared || 0), all = M.items.length, pct = Math.round(good / Math.max(1, all) * 1000) / 10;
+  let h = `<div class="mut">${bl(`PokPok list ${esc(V.when(pok.at))} · Vrich stock ${esc(V.when(vr.at))}`, `បញ្ជី PokPok ${esc(V.when(pok.at))} · ស្តុក Vrich ${esc(V.when(vr.at))}`)}</div>`;
+  h += `<div class="sum">${cell(all, 'PokPok items\nទំនិញ PokPok')}${cell(good, 'matched to Vrich\nត្រូវគ្នាជាមួយ Vrich', 'ok')}${cell(pct + '%', 'matched\nត្រូវគ្នា', pct >= 95 ? 'ok' : 'warn')}${cell(n.several || 0, 'several Vrich codes\nកូដ Vrich ច្រើន', n.several ? 'bad' : '')}${cell(n.none || 0, 'no Vrich code\nគ្មានកូដ Vrich', n.none ? 'bad' : '')}${cell((n.v_nopok || 0) + (n.v_words || 0) + (n.v_unpicked || 0), 'Vrich codes with no PokPok item\nកូដ Vrich គ្មានទំនិញ PokPok', 'warn')}</div>`;
+  h += `<div class="row"><button class="pri" id="mapcsv">${bl('⬇ Map for Excel / VHM Inventory (CSV)', '⬇ ផែនទីសម្រាប់ Excel / VHM Inventory (CSV)')}</button><button class="pri" id="mapjson">${bl('⬇ Map file for Stock Count (.json)', '⬇ ឯកសារផែនទីសម្រាប់រាប់ស្តុក (.json)')}</button></div>`;
+  h += `<div class="mut" style="margin-top:6px">${bi('Only <b>Matched</b> rows count straight into a Vrich stock code. The other rows are listed so the PokPok / Vrich person can fix them (or 🔗 Match them under <i>To fix</i>) — then build the map again.', 'មានតែជួរ <b>ត្រូវគ្នា</b> ទេ ដែលរាប់ចូលកូដស្តុក Vrich ដោយផ្ទាល់។ ជួរផ្សេងទៀតបង្ហាញ ដើម្បីឱ្យអ្នក PokPok / Vrich កែ (ឬ 🔗 ភ្ជាប់នៅ <i>ត្រូវកែ</i>) — រួចបង្កើតផែនទីម្តងទៀត។')}</div>`;
+  const prob = M.items.filter(i => i[9] === 'several' || i[9] === 'shared');
+  if (prob.length) h += `<details><summary>${bl(prob.length + ' row(s) to check', prob.length + ' ជួរត្រូវពិនិត្យ')}</summary>` + tbl([['Status', 'ស្ថានភាព'], ['PokPok code', 'កូដ PokPok'], ['PokPok item', 'ទំនិញ PokPok'], ['Vrich', 'Vrich']], prob.slice(0, 300).map(i => [{ h: bl(esc(MAP_ST[i[9]][0]), esc(MAP_ST[i[9]][1])) }, i[0], i[2] + ' ' + i[3], (i[6] ? i[6] + ' · ' : '') + i[8]])) + '</details>';
+  el.innerHTML = h;
+  publishMap(M, pok, vr).then(r => mapPubMsg(r), e => mapPubMsg(null, e));
+  const stamp = V.today();
+  $('mapcsv').onclick = () => csvDownload('pokpok-vrich-map-' + stamp + '.csv',
+    ['Status', 'Status (Khmer)', 'PokPok code', 'PokPok barcode', 'PokPok name', 'PokPok attributes', 'PokPok qty', 'PokPok price', 'Vrich sale code', 'Vrich stock code', 'Vrich description'],
+    [...M.items.map(i => [MAP_ST[i[9]][0], MAP_ST[i[9]][1], i[0], i[1], i[2], String(i[3] || '').replace(/-/g, ' ').replace(/\s+/g, ' ').trim(), i[4] == null ? '' : i[4], i[5] == null ? '' : i[5], i[7], i[6], i[8]]),
+     ...M.vonly.map(v => [MAP_ST[v[3]][0], MAP_ST[v[3]][1], '', '', '', '', '', '', v[1], v[0], v[2]])]);
+  $('mapjson').onclick = () => {
+    const out = { schema: 'vhm-stock-map', v: 1, at: V.localNow(), by: ST.user.email, pok: { ver: pok.ver, at: pok.at, count: pok.count }, vrich: { ver: vr.ver, at: vr.at, count: vr.count },
+      fields: ['pokCode', 'barcode', 'name', 'attrs', 'pokQty', 'price', 'vrichStock', 'sale', 'vrichDesc', 'status'], items: M.items, vonly: M.vonly };
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(out)], { type: 'application/json' })); a.download = 'vhm-stock-map-' + stamp + '.json'; a.click();
+  };
 }
 async function drawIssues() {
   const el = $('p-iss');
@@ -1335,6 +1452,7 @@ async function closeIssues(ids, resolution, note) {
   if (resolution === 'qok' || resolution === 'qstaff') data.quirkResult = resolution === 'qok' ? 'ok' : 'staff';
   await store.batch(ids.map(id => ({ op: 'set', col: COL.issues, id, data, merge: true })));
 }
+$('mapgo').onclick = () => drawMap();
 ['ready', 'cat', 'iss', 'staff'].forEach(k => { $('t-' + k).onclick = () => { ['ready', 'cat', 'iss', 'staff'].forEach(x => { $('t-' + x).classList.toggle('on', x === k); $('p-' + x).classList.toggle('hide', x !== k); }); if (k === 'cat') drawCat(); if (k === 'iss') drawIssues(); }; });
 
 /* ---------- staff accuracy (from the per-order scan logs) ---------- */
@@ -1503,6 +1621,7 @@ async function start() {
     await loadDays();
     await loadSettings(); await loadLinks();
   } catch (e) { $('status').innerHTML = msg('bad', 'Could not connect to the online data', 'មិនអាចភ្ជាប់ទៅទិន្នន័យលើប្រព័ន្ធបានទេ', esc(nice(e)) + bi('', 'សូមពិនិត្យអ៊ីនធឺណិត ហើយបើកទំព័រនេះម្តងទៀត។')); return; }
+  store.get(COL.meta, MAP_PTR).then(p => mapPubMsg(p ? { ptr: p, same: true } : null)).catch(() => {});
   drawStatus(); drawReady(); if (RD.sel) openDay(RD.sel).then(() => { if (RD.list.some(o => o.stamp !== rdStamp())) syncDays(); });
   drawIssues();
   // live: new ship-short requests show up without refreshing
