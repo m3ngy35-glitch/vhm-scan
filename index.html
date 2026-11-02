@@ -23,6 +23,9 @@
      2.4 (1 Nov 2026): 🔀 Choose the item — a label number used by several PokPok items (one item's Barcode is another item's Code,
      or two items share a barcode) no longer counts as the Code's owner automatically: when one of them could be in the open order,
      staff tap the item in their hand, then the normal checks run for that item. The scan log keeps which item was picked.
+     2.5 (3 Nov 2026): 📍 Shelves — the upload page reads each code's stock location from VHM Inventory and saves it in
+     sv2_meta/shelves (one document, watched here). Every order item shows 📍 its shelf, and an order's items are listed in walking
+     order (by shelf). Items whose code has no shelf yet come last. Nothing else about scanning changes.
      2.3 (27 Oct 2026): ⛔ ALREADY PACKED — an order that was scanned complete (on any phone, checked in sv2_log) is blocked; packing it
      again needs the manager (upload page → 🔁 Pack again) or a supervisor PIN, with a reason. The approval is used up when it is complete again. -->
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;700&display=swap" rel="stylesheet">
@@ -552,10 +555,10 @@ function render(expect) {
   $('shipshort').style.display = !orderDone() ? '' : 'none';
   $('ordersub').textContent = [o.fb || o.user, o.ship].filter(Boolean).join(' · ') + '  —  ' + got + '/' + total + ' items';
   $('barfill').style.width = (total ? got / total * 100 : 0) + '%';
-  $('items').innerHTML = o.items.map((it, i) => {
+  $('items').innerHTML = o.items.map((it, i) => [it, i]).sort((a, b) => shelfCmp(shelfOf(a[0]), shelfOf(b[0])) || a[1] - b[1]).map(([it, i]) => {
     const done = G(i) >= it.qty, sh = (cur.short && cur.short[i]) || 0;
     return `<div class="it ${done ? 'done' : ''} ${expect && !done ? 'expect' : ''}"><div class="l"><b>${esc(it.code)}</b>${it.stock ? '<span class="mut">' + esc(it.stock) + '</span>' : ''}</div>` +
-      `<div class="m">${esc(itemLabel(it))}${it.loc ? '<span class="loc">📍' + esc(it.loc) + '</span>' : ''}${(p => p != null ? '<span class="loc">💲' + esc(V.money(p)) + '</span>' : '')(SETTINGS.price === 'off' ? null : V.linePrice(it))}${sh ? '<span class="loc" style="color:#b45309">📦 ship short ×' + sh + ' — do not pack</span>' : ''}</div><div class="r">${cur.scanned[i]}/${it.qty}${done ? ' ✓' : ''}</div></div>`;
+      `<div class="m">${esc(itemLabel(it))}${shelfOf(it) ? '<span class="loc">📍' + esc(shelfOf(it)) + '</span>' : ''}${(p => p != null ? '<span class="loc">💲' + esc(V.money(p)) + '</span>' : '')(SETTINGS.price === 'off' ? null : V.linePrice(it))}${sh ? '<span class="loc" style="color:#b45309">📦 ship short ×' + sh + ' — do not pack</span>' : ''}</div><div class="r">${cur.scanned[i]}/${it.qty}${done ? ' ✓' : ''}</div></div>`;
   }).join('');
   renderOrderIssues();
 }
@@ -704,6 +707,13 @@ function record(r, code, extra) {
 let pok = new Map(), pokRows = [], pokBySale = new Map(), ATTRW = new Set();      // ATTRW: every word PokPok uses as a colour/size
 const CAT = { ver: '', count: 0, at: '', by: '', source: 'none', err: '', busy: null, metaVer: '' };
 let LINKS = V.linksParse(LS.get('links', '')), LOOSE = V.looseParse(LS.get('loose', ''));
+// 📍 shelves: code -> stock location (from VHM Inventory, saved by the upload page in sv2_meta/shelves; kept on the phone)
+let SHELVES = new Map();
+function setShelves(txt) { const m = new Map(); String(txt || '').split('\n').forEach(l => { const [c, st] = l.split('\t'); if (c && st) m.set(nz(c), st); }); SHELVES = m; }
+setShelves(LS.get('shelves', ''));
+// an order line's shelf: its code, or the model without a size at the end (Vrich "JA29" = JA)
+function shelfOf(it) { if (!it) return ''; if (it.loc) return it.loc; const c = nz(it.code); if (SHELVES.has(c)) return SHELVES.get(c); const m = c.match(/^(.*\D)\d{2}$/); return (m && SHELVES.get(m[1])) || ''; }
+const shelfCmp = (a, b) => (!a - !b) || String(a).localeCompare(String(b), 'en', { numeric: true, sensitivity: 'base' });
 let FRESH = new Set(), FRESH_VER = '', CONF = new Set();
 /* 🔀 label numbers used by more than one PokPok item (e.g. U108's barcode P0003963 is also R215's own Code, or two items share
  * one barcode): number -> every item it can mean. When one of them could be in the open order, staff choose the item in their hand. */
@@ -1199,7 +1209,8 @@ function priceOk(o, idx, code, info) {
 function exactKeys(it) { if (it.stock) return [norm(it.stock)]; const c = norm(it.code); return [c]; }
 function expectedText(o) {
   const missing = o.items.map((it, i) => ({ it, left: it.qty - G(i) })).filter(x => x.left > 0);
-  return 'EXPECTED · ត្រូវយក: ' + missing.map(x => `<b>${esc(x.it.code)}</b> ${esc(itemLabel(x.it))}${x.it.loc ? ' 📍' + esc(x.it.loc) : ''}${x.left > 1 ? ' ×' + x.left : ''}`).join(' &nbsp;|&nbsp; ');
+  missing.sort((a, b) => shelfCmp(shelfOf(a.it), shelfOf(b.it)));
+  return 'EXPECTED · ត្រូវយក: ' + missing.map(x => `<b>${esc(x.it.code)}</b> ${esc(itemLabel(x.it))}${shelfOf(x.it) ? ' 📍' + esc(shelfOf(x.it)) : ''}${x.left > 1 ? ' ×' + x.left : ''}`).join(' &nbsp;|&nbsp; ');
 }
 function afterCount(o, it, head) {
   if (o.items.every((x, i) => G(i) >= x.qty)) {
@@ -1207,7 +1218,7 @@ function afterCount(o, it, head) {
     const shortTxt = cur.short && cur.short.some(Boolean) ? '<br>📦 Ship short: leave out ' + esc(missText(o, o.items.map((x, i) => ({ i, n: cur.short[i] })).filter(m => m.n))) : '';
     finishOrder();
     setStatus('done', 'ORDER COMPLETE ✓', `#${esc(cur.id)} — ready for packer · ប្រគល់ឲ្យអ្នកវេចខ្ចប់` + (n ? `<br>✓ ${n} issue(s) of this order closed` : '') + shortTxt + (head && head.startsWith('⚡') ? '<br>' + esc(head) : '') + scannedTotal(o)); sDone(); buzz([40, 60, 40]);
-  } else { setStatus('ok', head || '✓ CORRECT', `${esc(it.stock || it.code)} · ${esc(itemLabel(it))}${it.loc ? ' · 📍 ' + esc(it.loc) : ''}`); sOk(); buzz(25); }
+  } else { setStatus('ok', head || '✓ CORRECT', `${esc(it.stock || it.code)} · ${esc(itemLabel(it))}${shelfOf(it) ? ' · 📍 ' + esc(shelfOf(it)) : ''}`); sOk(); buzz(25); }
 }
 // 💲 total of the scanned items at the Vrich order price (per piece × pieces scanned); ship-short pieces are not counted
 function scannedTotal(o) {
@@ -1446,6 +1457,7 @@ authReady.then(async ok => {
   store.watch(COL.meta, 'settings', s => { if (s === undefined) return; if (s) { SETTINGS = s; LS.set('syn', s.syn == null ? null : s.syn); LS.set('price', s.price === 'off' ? 'off' : 'on'); } V.setSyn(SETTINGS.syn); staffPicker(); renderIssues(); render(); if ($('tab-data').classList.contains('on')) renderData(); });
   store.watch(COL.meta, 'links', d => { if (d === undefined) return; LINKS = V.linksParse(d && d.txt); LS.set('links', (d && d.txt) || ''); });
   store.watch(COL.meta, 'loose', d => { if (d === undefined) return; LOOSE = V.looseParse(d && d.txt); LS.set('loose', (d && d.txt) || ''); });
+  store.watch(COL.meta, 'shelves', d => { if (d === undefined) return; setShelves(d && d.txt); LS.set('shelves', (d && d.txt) || ''); if (cur) render(); });
   syncIssues(true); flushLog();
   // open issues from every phone, live (billed once, then only for issues that change)
   store.watchQuery(COL.issues, [['status', '==', 'open']], (docs, err) => {

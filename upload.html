@@ -254,6 +254,21 @@ html[data-lang=km] .top h1 .bl>.km{font-size:inherit;font-weight:inherit;color:i
       </div>
     </div>
 
+    <!-- ===== 🧺 picking list + shelves (stock locations come from VHM Inventory) ===== -->
+    <div class="card" id="pickcard">
+      <h2><span class="bi"><span class="en">🧺 Picking list &amp; shelves</span><span class="km">🧺 បញ្ជីយកទំនិញ និងធ្នើ</span></span></h2>
+      <div class="mut"><span class="bi"><span class="en">Shelf (stock location) of every code, read from VHM Inventory. The packing phones then show 📍 the shelf next to each item, in walking order, and here you can print the day's picking list grouped by shelf.</span><span class="km">ធ្នើ (ទីតាំងស្តុក) នៃកូដនីមួយៗ អានពី VHM Inventory។ ទូរស័ព្ទវេចខ្ចប់បង្ហាញ 📍 ធ្នើនៅជាប់ទំនិញនីមួយៗ តាមលំដាប់ដើរ ហើយនៅទីនេះអាចព្រីនបញ្ជីយកទំនិញប្រចាំថ្ងៃតាមធ្នើ។</span></span></div>
+      <div id="invlogin" class="hide">
+        <div class="row"><input id="invemail" type="email" autocomplete="username" data-ph-en="VHM Inventory email" data-ph-km="អ៊ីមែល VHM Inventory" style="flex:1 1 200px"><input id="invpass" type="password" autocomplete="current-password" data-ph-en="Password" data-ph-km="ពាក្យសម្ងាត់" style="flex:1 1 160px"><button class="pri" id="invgo"><span class="bl"><span class="en">Connect VHM Inventory</span><span class="km">ភ្ជាប់ VHM Inventory</span></span></button></div>
+        <div class="mut"><span class="bi"><span class="en">Use your VHM Inventory login (once — this computer stays connected). It is only used to READ the locations.</span><span class="km">ប្រើគណនី VHM Inventory (ម្តង — កុំព្យូទ័រនេះនៅភ្ជាប់)។ ប្រើតែដើម្បីអានទីតាំងប៉ុណ្ណោះ។</span></span></div>
+      </div>
+      <div id="invstate" class="mut" style="margin-top:6px"></div>
+      <div class="row"><button id="shelfgo"><span class="bl"><span class="en">🔄 Update shelves now</span><span class="km">🔄 ធ្វើបច្ចុប្បន្នភាពធ្នើឥឡូវនេះ</span></span></button><button id="invout" class="hide"><span class="bl"><span class="en">Disconnect</span><span class="km">ផ្តាច់</span></span></button></div>
+      <h3 style="margin-top:14px"><span class="bl"><span class="en">Picking list for the order file in box 3</span><span class="km">បញ្ជីយកទំនិញសម្រាប់ឯកសារការកុម្ម៉ង់ក្នុងប្រអប់ទី 3</span></span></h3>
+      <div class="row"><button class="pri" id="pickgo" disabled><span class="bl"><span class="en">🧺 New orders only</span><span class="km">🧺 តែការកុម្ម៉ង់ថ្មី</span></span></button><button id="pickall" disabled><span class="bl"><span class="en">All orders in the file</span><span class="km">ការកុម្ម៉ង់ទាំងអស់ក្នុងឯកសារ</span></span></button><span id="pickinfo" class="mut"></span></div>
+      <div id="pickres"></div>
+    </div>
+
     <!-- ===== 🗺 PokPok ↔ Vrich map (for stock counting) ===== -->
     <div class="card" id="mapcard">
       <h2><span class="bi"><span class="en">🗺 PokPok ↔ Vrich map</span><span class="km">🗺 ផែនទី PokPok ↔ Vrich</span></span></h2>
@@ -1072,7 +1087,7 @@ $('f-ord').onchange = async e => {
     if (gone.length) h += msg('warn', `${gone.length} order(s) uploaded earlier are not in this file`, `${gone.length} ការកុម្ម៉ង់ដែលបានបញ្ចូលពីមុន មិនមានក្នុងឯកសារនេះទេ`, `${bl('Dates:', 'ថ្ងៃ៖')} ${dates.map(esc).join(', ')}<label class="chk"><input type="checkbox" id="ordcancel"> ${bi('Mark them as <b>cancelled</b> (phones will say "don\'t pack"). Leave unticked if this export was filtered.', 'ដាក់ថា <b>បានលុបចោល</b> (ទូរស័ព្ទនឹងប្រាប់ថា «កុំវេចខ្ចប់»)។ កុំធីក បើឯកសារនេះ Export តែមួយផ្នែក។')}</label><div class="mut" style="margin-top:4px">${gone.slice(0, 60).map(x => esc(x[1])).join(', ')}${gone.length > 60 ? ' …' : ''}</div>`);
     h += step2() + upBtn('ogo', fmt(nw.length + ch.length + pr.length) + ' order(s)', fmt(nw.length + ch.length + pr.length) + ' ការកុម្ម៉ង់');
     if (same.length) h += undoHTML(same.length, false) + `<div class="mut">${bi('Removes the orders that are online exactly as in this file (orders, daily order list and the "Orders that can\'t scan" list). Orders that were scanned keep their scan log and issues.', 'លុបការកុម្ម៉ង់ដែលដូចឯកសារនេះទាំងស្រុងចេញពីប្រព័ន្ធ។ ការកុម្ម៉ង់ដែលបានស្កេនហើយ នៅរក្សាកំណត់ត្រាស្កេនដដែល។')}</div>`;
-    slotMsg('ord', h); $('ogo').onclick = uploadOrders; if ($('oundo')) $('oundo').onclick = undoOrders;
+    slotMsg('ord', h); $('ogo').onclick = uploadOrders; if ($('oundo')) $('oundo').onclick = undoOrders; pickEnable();
   } catch (err) { slotMsg('ord', await fileErr(f, { message: nice(err) })); }
 };
 // undo a wrong upload: remove the orders of this file that are online unchanged (same signature = they came from this file)
@@ -1124,7 +1139,7 @@ async function uploadOrders() {
     S.same = Object.keys(S.A.orders);
     slotMsg('ord', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(`${fmt(S.nw.length)} new, ${fmt(S.ch.length)} changed${cancel ? ', ' + fmt(S.gone.length) + ' cancelled' : ''}. Phones can scan them now.`, `ថ្មី ${fmt(S.nw.length)} · បានប្តូរ ${fmt(S.ch.length)}${cancel ? ' · បានលុបចោល ' + fmt(S.gone.length) : ''}។ ទូរស័ព្ទអាចស្កេនបានហើយឥឡូវនេះ។`)) + undoHTML(S.same.length, true));
     $('oundo').onclick = undoOrders;
-    drawStatus(); autoCleanup();
+    drawStatus(); autoCleanup(); pickEnable(); updateShelves(true);      // phones get the latest shelves with the new orders
   } catch (err) { slotMsg('ord', saveFail(err)); }
 }
 
@@ -1335,6 +1350,115 @@ function mapPubMsg(r, err) {
   el.innerHTML = '🔌 ' + bi(`Online for VHM Inventory, Stock Take and Stock Count: map of ${fmt(p.count)} items · ${esc(V.when(p.at))}` + (r.same ? ' · already up to date' : ' · ✓ just published'), `នៅលើប្រព័ន្ធសម្រាប់ VHM Inventory, Stock Take និងរាប់ស្តុក៖ ផែនទី ${fmt(p.count)} មុខ · ${esc(V.when(p.at))}` + (r.same ? ' · ទាន់សម័យហើយ' : ' · ✓ ទើបតែផ្សព្វផ្សាយ'));
 }
 // rebuild + publish after anything that changes the map; never stops the upload that called it
+/* ---------- 🧺 shelves (stock locations from VHM Inventory) + picking list ----------
+ * VHM Inventory (Firebase project vhm-data) keeps each code's stock location. This page signs in there with a VHM Inventory
+ * account (separate Firebase app, read-only use), reads the products — the first time all of them, then only the ones changed
+ * since (updated_at), kept on this computer — and saves ONE small document for the phones:
+ *   sv2_meta/shelves = { txt: "CODE\tstock\tsample\n…", count, at }   (written only when something changed)
+ * The phones watch that one document and show 📍 the shelf next to every item, in walking order.
+ * In VHM Inventory the STOCK place is stored in the field "sample_location" and the sample in "storage_location"
+ * (see LOCATION_FIELDS in VHM Inventory's js/constants.js) — read here exactly that way. */
+const INV_CONFIG = { apiKey: "AIzaSyDxF04KvMQUg7kEQw4fFA4U_hiSoMyrUjs", authDomain: "vhm-data.firebaseapp.com", projectId: "vhm-data", storageBucket: "vhm-data.firebasestorage.app", messagingSenderId: "983915578738", appId: "1:983915578738:web:eb4b94478f1411a6c009eb" };
+const INV_STOCK_FIELD = 'sample_location', INV_SAMPLE_FIELD = 'storage_location';
+const SHELF = { app: null, auth: null, db: null, map: new Map(), at: '', count: 0, busy: null };
+const natCmp = (a, b) => String(a).localeCompare(String(b), 'en', { numeric: true, sensitivity: 'base' });
+function invApp() {
+  if (!SHELF.app && window.firebase && firebase.initializeApp) { SHELF.app = (firebase.apps || []).find(a => a.name === 'vhminv') || firebase.initializeApp(INV_CONFIG, 'vhminv'); SHELF.auth = SHELF.app.auth(); SHELF.db = SHELF.app.firestore(); }
+  return SHELF.app;
+}
+const invUser = () => new Promise(r => { if (!invApp()) return r(null); const u = SHELF.auth.onAuthStateChanged(x => { u(); r(x); }); });
+function shelvesParse(txt) { const m = new Map(); String(txt || '').split('\n').forEach(l => { const [c, s, p] = l.split('\t'); if (c) m.set(nz(c), { stock: s || '', sample: p || '' }); }); return m; }
+// shelf of an order line: its code, or the model without a size at the end (Vrich "JA29" = JA)
+function shelfOf(code) { const c = nz(code), x = SHELF.map.get(c); if (x && x.stock) return x.stock; const m = c.match(/^(.*\D)\d{2}$/); const y = m && SHELF.map.get(m[1]); return y && y.stock ? y.stock : ''; }
+function drawInvState(msgEn, msgKm, bad) {
+  const u = SHELF.auth && SHELF.auth.currentUser;
+  $('invlogin').classList.toggle('hide', !!u); $('invout').classList.toggle('hide', !u); $('shelfgo').disabled = !u;
+  const line = SHELF.count ? bl(`📦 Shelves online: ${fmt(SHELF.count)} codes · ${esc(V.when(SHELF.at))}`, `📦 ធ្នើលើប្រព័ន្ធ៖ ${fmt(SHELF.count)} កូដ · ${esc(V.when(SHELF.at))}`) : bl('📦 No shelves online yet.', '📦 មិនទាន់មានធ្នើលើប្រព័ន្ធ។');
+  $('invstate').innerHTML = (u ? bl('✓ Connected to VHM Inventory as ' + esc(u.email || ''), '✓ បានភ្ជាប់ VHM Inventory ជា ' + esc(u.email || '')) + '<br>' : '') + line + (msgEn ? `<br><b style="color:${bad ? '#b91c1c' : '#166534'}">${bl(esc(msgEn), esc(msgKm || msgEn))}</b>` : '');
+}
+// products from VHM Inventory: the first time all, then only those changed since the newest one this computer has
+async function invProducts() {
+  let c = await V.idb.get('inv_products');
+  if (!c || !c.docs || Date.now() - (c.fullAt || 0) > 7 * 864e5) c = { maxMs: 0, fullAt: Date.now(), docs: {} };      // once a week: read everything again
+  let q = SHELF.db.collection('products');
+  if (c.maxMs) q = q.where('updated_at', '>', firebase.firestore.Timestamp.fromMillis(c.maxMs - 1));
+  const s = await q.get();
+  s.docs.forEach(d => { const x = d.data(), ms = x.updated_at && x.updated_at.toMillis ? x.updated_at.toMillis() : 0; c.docs[d.id] = { code: clean(x.master_code || ''), stock: clean(x[INV_STOCK_FIELD] || ''), sample: clean(x[INV_SAMPLE_FIELD] || ''), del: !!x.deleted }; if (ms > c.maxMs) c.maxMs = ms; });
+  await V.idb.set('inv_products', c);
+  return { products: Object.values(c.docs), read: s.size };
+}
+async function updateShelves(quiet) {
+  if (SHELF.busy) return SHELF.busy;
+  SHELF.busy = (async () => {
+    try {
+      if (!(await invUser())) { if (!quiet) drawInvState('Connect VHM Inventory first.', 'សូមភ្ជាប់ VHM Inventory ជាមុនសិន។', true); return false; }
+      if (!quiet) drawInvState('Reading VHM Inventory…', 'កំពុងអាន VHM Inventory…');
+      const { products, read } = await invProducts();
+      const by = new Map();
+      products.forEach(p => { if (p.del || !p.code) return; const k = nz(p.code), o = by.get(k) || { stock: new Set(), sample: new Set() }; if (p.stock) o.stock.add(p.stock); if (p.sample) o.sample.add(p.sample); by.set(k, o); });
+      const txt = [...by].filter(([k, o]) => o.stock.size || o.sample.size).sort((a, b) => natCmp(a[0], b[0])).map(([k, o]) => [k, [...o.stock].join(' / '), [...o.sample].join(' / ')].map(v => String(v).replace(/[\t\n]/g, ' ')).join('\t')).join('\n');
+      const prev = await store.get(COL.meta, 'shelves');
+      let wrote = false;
+      if (!prev || prev.txt !== txt) { await store.set(COL.meta, 'shelves', { txt, count: txt ? txt.split('\n').length : 0, at: V.localNow(), by: ST.user.email }); wrote = true; }
+      const d = wrote ? { txt, at: V.localNow() } : prev;
+      SHELF.map = shelvesParse(d.txt); SHELF.count = SHELF.map.size; SHELF.at = d.at;
+      drawInvState(wrote ? `✓ Shelves updated (${fmt(read)} product(s) read from VHM Inventory).` : `✓ Shelves already up to date (${fmt(read)} product(s) read).`, wrote ? `✓ បានធ្វើបច្ចុប្បន្នភាពធ្នើ (អាន ${fmt(read)} ទំនិញ)។` : `✓ ធ្នើទាន់សម័យហើយ (អាន ${fmt(read)} ទំនិញ)។`);
+      return true;
+    } catch (e) {
+      const m = (e && (e.code || e.message)) || String(e);
+      drawInvState('Could not read VHM Inventory: ' + m, 'មិនអាចអាន VHM Inventory៖ ' + m, true);
+      return false;
+    } finally { SHELF.busy = null; }
+  })();
+  return SHELF.busy;
+}
+async function initShelves() {
+  try { const d = await store.get(COL.meta, 'shelves'); if (d) { SHELF.map = shelvesParse(d.txt); SHELF.count = SHELF.map.size; SHELF.at = d.at; } } catch (e) {}
+  if (!invApp()) { $('invstate').innerHTML = bl('VHM Inventory cannot be reached from here (no internet?).', 'មិនអាចភ្ជាប់ VHM Inventory បានទេ។'); return; }
+  await invUser(); drawInvState();
+}
+$('invgo').onclick = async () => {
+  if (!invApp()) return;
+  drawInvState('Connecting…', 'កំពុងភ្ជាប់…');
+  try { await SHELF.auth.signInWithEmailAndPassword($('invemail').value.trim(), $('invpass').value); $('invpass').value = ''; await updateShelves(); }
+  catch (e) { drawInvState('VHM Inventory login failed: ' + (e.code || e.message), 'ចូល VHM Inventory មិនបាន៖ ' + (e.code || e.message), true); }
+};
+$('invpass').addEventListener('keydown', e => { if (e.key === 'Enter') $('invgo').click(); });
+$('invout').onclick = async () => { if (SHELF.auth) await SHELF.auth.signOut(); drawInvState(); };
+$('shelfgo').onclick = () => updateShelves();
+
+/* picking list: every item of the chosen orders, grouped by shelf → code → colour/size, in walking order */
+function pickEnable() { const S = SL.ord; const ok = !!(S && S.A && S.A.orders); $('pickgo').disabled = !ok || !(S.nw.length + S.ch.length); $('pickall').disabled = !ok; $('pickinfo').innerHTML = ok ? bl(`${esc(S.f.name)} · ${fmt(S.nw.length + S.ch.length)} new/changed · ${fmt(Object.keys(S.A.orders).length)} in the file`, `${esc(S.f.name)} · ${fmt(S.nw.length + S.ch.length)} ថ្មី/បានប្តូរ · ${fmt(Object.keys(S.A.orders).length)} ក្នុងឯកសារ`) : bl('Choose the Vrich order file in box 3 first.', 'សូមជ្រើសរើសឯកសារការកុម្ម៉ង់ Vrich ក្នុងប្រអប់ទី 3 ជាមុនសិន។'); }
+async function pickList(all) {
+  const S = SL.ord; if (!S || !S.A) return;
+  if (SHELF.auth && SHELF.auth.currentUser && Date.now() - Date.parse(String(SHELF.at || 0).replace(' ', 'T')) > 5 * 60e3) await updateShelves(true);   // fresh shelves first
+  const ids = all ? Object.keys(S.A.orders) : [...S.nw, ...S.ch], groups = new Map();
+  ids.forEach(id => (S.A.orders[id].items || []).forEach(it => {
+    const shelf = shelfOf(it.code), k = shelf + '\u0001' + nz(it.code) + '\u0001' + clean(it.desc);
+    const g = groups.get(k) || { shelf, code: it.code, desc: clean(it.desc), stock: it.stock || '', qty: 0, orders: new Set() };
+    g.qty += it.qty || 1; g.orders.add(id); groups.set(k, g);
+  }));
+  const rows = [...groups.values()].sort((a, b) => (!a.shelf - !b.shelf) || natCmp(a.shelf, b.shelf) || natCmp(a.code, b.code) || natCmp(a.desc, b.desc));
+  const pcs = rows.reduce((n, r) => n + r.qty, 0), noShelf = rows.filter(r => !r.shelf);
+  let h = `<div class="sum">${cell(ids.length, 'orders\nការកុម្ម៉ង់')}${cell(pcs, 'pieces to pick\nដុំត្រូវយក')}${cell(new Set(rows.map(r => r.shelf).filter(Boolean)).size, 'shelves\nធ្នើ')}${cell(noShelf.length, 'lines with no shelf\nជួរគ្មានធ្នើ', noShelf.length ? 'warn' : 'ok')}</div>`;
+  if (noShelf.length) h += box('warn', bi(`${fmt(noShelf.length)} line(s) have no stock location in VHM Inventory (codes: ${esc([...new Set(noShelf.map(r => nz(r.code)))].slice(0, 30).join(', '))}${noShelf.length > 30 ? ' …' : ''}). They are listed last. Add the location in VHM Inventory (📍 Locations), then 🔄 Update shelves.`, `${fmt(noShelf.length)} ជួរគ្មានទីតាំងស្តុកក្នុង VHM Inventory។ វាស្ថិតនៅចុងក្រោយ។ សូមបន្ថែមទីតាំង រួចចុច 🔄 ធ្វើបច្ចុប្បន្នភាពធ្នើ។`));
+  h += `<div class="row"><button class="pri" id="pickprint">${bl('🖨 Print', '🖨 ព្រីន')}</button><button id="pickxlsx">${bl('⬇ Excel', '⬇ Excel')}</button></div>`;
+  h += tbl([['Shelf', 'ធ្នើ'], ['Code', 'កូដ'], ['Colour / size', 'ពណ៌ / ទំហំ'], ['Qty', 'ចំនួន'], ['Orders', 'ការកុម្ម៉ង់']], rows.slice(0, 1500).map(r => [r.shelf || '—', r.code, r.desc, r.qty, r.orders.size]));
+  $('pickres').innerHTML = h;
+  const title = (all ? 'All orders' : 'New orders') + ' · ' + S.f.name + ' · ' + V.localNow().slice(0, 16).replace('T', ' ');
+  const head = ['Shelf', 'Code', 'Colour / size', 'Qty', 'Orders', 'Stock code', 'Order numbers'];
+  const data = rows.map(r => [r.shelf || '(no shelf)', r.code, r.desc, r.qty, r.orders.size, r.stock, [...r.orders].join(' ')]);
+  $('pickxlsx').onclick = () => { const ws = XLSX.utils.aoa_to_sheet([[title], head, ...data]); ws['!cols'] = [8, 10, 22, 6, 8, 14, 60].map(w => ({ wch: w })); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Picking list'); XLSX.writeFile(wb, 'picking-list-' + V.today() + '.xlsx'); };
+  $('pickprint').onclick = () => {
+    const w = window.open('', '_blank'); if (!w) { alert(Lc('Allow pop-ups to print.', 'សូមអនុញ្ញាត pop-up ដើម្បីព្រីន។')); return; }
+    let last = null; const body = rows.map(r => { const sh = r.shelf || '(no shelf)', hd = sh !== last ? `<tr class="sh"><td colspan="5">📦 ${esc(sh)}</td></tr>` : ''; last = sh; return hd + `<tr><td>☐</td><td><b>${esc(r.code)}</b></td><td>${esc(r.desc)}</td><td class="n">${r.qty}</td><td class="n">${r.orders.size}</td></tr>`; }).join('');
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Picking list</title><style>body{font-family:'Noto Sans Khmer',system-ui,sans-serif;margin:10mm;font-size:12pt}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:3px 6px}th{background:#eee}.n{text-align:right}.sh td{background:#f3f4f6;font-weight:700;font-size:13pt}@media print{.no{display:none}}</style></head><body><p class="no"><button onclick="print()">🖨 Print</button></p><h3>🧺 Picking list · ${esc(title)}</h3><p>${fmt(ids.length)} orders · ${fmt(pcs)} pieces</p><table><tr><th></th><th>Code</th><th>Colour / size</th><th>Qty</th><th>Orders</th></tr>${body}</table></body></html>`);
+    w.document.close();
+  };
+}
+$('pickgo').onclick = () => pickList(false);
+$('pickall').onclick = () => pickList(true);
+
 async function autoPublishMap() {
   try {
     const pok = await currentCatalog('pok'), vr = await currentCatalog('vrich');
@@ -1622,6 +1746,7 @@ async function start() {
     await loadSettings(); await loadLinks();
   } catch (e) { $('status').innerHTML = msg('bad', 'Could not connect to the online data', 'មិនអាចភ្ជាប់ទៅទិន្នន័យលើប្រព័ន្ធបានទេ', esc(nice(e)) + bi('', 'សូមពិនិត្យអ៊ីនធឺណិត ហើយបើកទំព័រនេះម្តងទៀត។')); return; }
   store.get(COL.meta, MAP_PTR).then(p => mapPubMsg(p ? { ptr: p, same: true } : null)).catch(() => {});
+  initShelves(); pickEnable();
   drawStatus(); drawReady(); if (RD.sel) openDay(RD.sel).then(() => { if (RD.list.some(o => o.stamp !== rdStamp())) syncDays(); });
   drawIssues();
   // live: new ship-short requests show up without refreshing
