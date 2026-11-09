@@ -5,7 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f4f5f7">
 <title>VHM Stock Count</title>
-<!-- VHM Stock Count 1.2 (9 Nov 2026) · 1.2: "Size chart" is the first sheet of the report (Stock Take layout: one block per product
+<!-- VHM Stock Count 1.3 (9 Nov 2026) · 1.3: ☁ counts are saved online so the manager can open them on a laptop.
+     · The name is required before scanning. Each phone keeps its own count (id = this device + start time), never mixed with another's.
+     · Online save = ONE document per count in sv2_counts (gzip): written at most once a minute and only when the count changed, when
+       the page is hidden (≥ 10 s since the last save), or with "☁ Save online now". Never one write per scan.
+       The scan list is included while the document stays small (≤ 700 KB gzip); otherwise only the quantities are saved.
+     · 💻 Manager (same login as the upload page): lists the counts of the last 30 days (1 read per count listed; opening one costs
+       nothing more), opens one or several combined (read-only: report, size chart, pictures), deletes counts. Counts older than
+       30 days are deleted when the list is loaded. Staff phones can only write their own count (Firebase rules: see sv2_counts).
+     VHM Stock Count 1.2 (9 Nov 2026) · 1.2: "Size chart" is the first sheet of the report (Stock Take layout: one block per product
      code, colours across — 5 per band — sizes down with the counted qty beside each, colour totals underneath; a red number differs from
      the PokPok qty and its cell comment shows the PokPok qty). "🖨 / 🖼 Size chart" opens the same layout to print or 🖼 save as a picture (PNG: all codes, or one code). Colour/size come from the
      PokPok attributes ("-colour -size").
@@ -77,6 +85,16 @@ main{max-width:860px;margin:0 auto;padding:6px 14px 80px}
 .v .cnt{font-size:24px;font-weight:800;min-width:2.2ch;text-align:right}
 .v .pm{display:flex;gap:4px}.v .pm button{min-width:44px;padding:0;font-size:20px;font-weight:700}
 .v.last{background:#eff6ff}
+#viewbar{margin-top:10px;border:2px solid var(--acc);background:#eff6ff;border-radius:12px;padding:10px 12px}
+#viewbar b{color:#1e3a8a}
+body.viewing .v .pm{visibility:hidden}
+#cloudst.ok{color:#166534}#cloudst.bad{color:#991b1b;font-weight:700}#cloudst.wait{color:#9a3412}
+.mgr{margin-top:16px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
+.mgr>summary{cursor:pointer;padding:12px;font-weight:700}
+#mgrbody{padding:0 12px 12px}
+.crow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;border-top:1px solid var(--line);padding:8px 0}
+.crow input{min-height:24px;width:22px;height:22px}
+.crow .act{display:flex;gap:6px}.crow .act button{min-height:38px;padding:0 10px}
 @media(max-width:480px){.top{padding:8px 12px}.top h1{font-size:15px}main{padding:4px 10px 80px}.card{padding:12px}}
 </style>
 </head>
@@ -105,9 +123,12 @@ main{max-width:860px;margin:0 auto;padding:6px 14px 80px}
     <div class="mut" style="margin-top:4px"><span class="bi"><span class="en">Scan each PokPok label once per piece. Type a product code (e.g. E366) to add it with 0 — every colour/size of a code you touch is in the report.</span><span class="km">ស្កេនស្លាក PokPok ម្តង ក្នុងមួយដុំ។ វាយកូដទំនិញ (ឧ. E366) ដើម្បីបន្ថែមវាជាមួយ 0 — គ្រប់ពណ៌/ទំហំនៃកូដដែលបានរាប់ មាននៅក្នុងរបាយការណ៍។</span></span></div>
     <div id="res"></div>
     <div id="pick" class="hide"></div>
+    <div id="viewbar" class="hide"></div>
     <div class="row"><button id="undo"></button><button class="pri" id="export"></button><button id="printchart"></button><button class="danger" id="reset"></button></div>
+    <div class="row"><button id="cloudsave"></button><span id="cloudst" class="mut"></span></div>
     <div class="sum" id="tot"></div>
     <div id="codes"></div>
+    <details class="mgr" id="mgr"><summary></summary><div id="mgrbody"></div></details>
   </div>
 </main>
 
@@ -145,6 +166,8 @@ document.querySelectorAll('#langsw [data-l]').forEach(b => b.onclick = () => set
 $('undo').innerHTML = bl('↩ Undo last', '↩ ដកវិញ');
 $('export').innerHTML = bl('⬇ Export report (.xlsx)', '⬇ ទាញយករបាយការណ៍ (.xlsx)');
 $('reset').innerHTML = bl('New count', 'រាប់ថ្មី');
+$('cloudsave').innerHTML = bl('☁ Save online now', '☁ រក្សាទុកលើប្រព័ន្ធឥឡូវនេះ');
+$('mgr').querySelector('summary').innerHTML = bl('💻 Open counts on a laptop (manager)', '💻 បើកការរាប់លើកុំព្យូទ័រ (អ្នកគ្រប់គ្រង)');
 $('printchart').innerHTML = bl('🖨 / 🖼 Size chart (print or picture)', '🖨 / 🖼 តារាងទំហំ (បោះពុម្ព ឬរូបភាព)');
 
 /* ---------- sounds ---------- */
@@ -167,11 +190,19 @@ function index(m) {
 }
 /* ---------- the map online (VHM Scan, project vhm-menu): read-only, anonymous — the same access the packing phones use ---------- */
 const SCAN_CFG = { apiKey: "AIzaSyCzA--FJTKl74TI0FRhDNGurnOimZjgja0", authDomain: "vhm-menu.firebaseapp.com", projectId: "vhm-menu", storageBucket: "vhm-menu.firebasestorage.app", messagingSenderId: "728781560326", appId: "1:728781560326:web:4f88ffa992cb6175f40187" };
-let FB = null, lastCheck = 0, checking = null, MAPERR = '';
+let FB = null, lastCheck = 0, checking = null, MAPERR = '', FBAUTH = null;
+// the Firebase app + the first sign-in state (a manager who logged in on this device stays logged in)
+function fbInit() {
+  if (!window.firebase || !firebase.initializeApp) return Promise.reject(new Error('offline'));
+  if (!FB) { const app = firebase.apps.find(a => a.name === 'vhmmap') || firebase.initializeApp(SCAN_CFG, 'vhmmap'); FB = { auth: app.auth(), db: app.firestore() }; }
+  if (!FBAUTH) FBAUTH = new Promise(r => { const u = FB.auth.onAuthStateChanged(x => { u(); r(x); }); });
+  return FBAUTH;
+}
+// signed in for reading the map / saving a count: the manager if logged in here, otherwise anonymous (like the packing phones)
+async function fbReady() { await fbInit(); if (!FB.auth.currentUser) await FB.auth.signInAnonymously(); return FB.auth.currentUser; }
 async function onlineMap() {
   if (!window.firebase || !window.pako) throw new Error('offline');
-  if (!FB) { const app = firebase.apps.find(a => a.name === 'vhmmap') || firebase.initializeApp(SCAN_CFG, 'vhmmap'); FB = { auth: app.auth(), db: app.firestore() }; }
-  if (!FB.auth.currentUser) { await new Promise(r => { const u = FB.auth.onAuthStateChanged(x => { u(); r(x); }); }); if (!FB.auth.currentUser) await FB.auth.signInAnonymously(); }
+  await fbReady();
   const ptr = await FB.db.collection('sv2_meta').doc('stockmap').get();            // 1 read
   if (!ptr.exists) return null;
   const p = ptr.data(); if (MAP && MAP.ver === p.ver) return MAP;
@@ -210,8 +241,23 @@ $('mapfile').onchange = async e => {
 };
 
 /* ---------- the count (kept on this device until "New count") ---------- */
-let C = LS.get('session', null) || { start: now(), counts: {}, codes: [], scans: [], unknown: {} };
-const save = () => LS.set('session', C);
+let DEV = LS.get('dev', ''); if (!DEV) { DEV = Math.random().toString(36).slice(2, 10); LS.set('dev', DEV); }
+const newCount = () => ({ id: DEV + '-' + Date.now().toString(36), start: now(), counts: {}, codes: [], scans: [], unknown: {} });
+const CNT_COL = 'sv2_counts';
+const CLOUD = { ver: 0, saved: 0, last: 0, busy: false, off: 0, at: '', err: '' };      // ver changes with every change of the count
+let C = LS.get('session', null) || newCount();
+if (!C.id) { C.id = DEV + '-' + Date.now().toString(36); LS.set('session', C); }
+if (C.scans.length || C.codes.length) CLOUD.ver = 1;          // not known to be online yet: saved at the next minute
+let VIEW = null;          // a saved count (or several combined) opened here: read-only, never saved on this device
+const save = () => { if (VIEW) return; LS.set('session', C); CLOUD.ver++; cloudShow(); };
+const staffOf = c => [...new Set((c.scans || []).map(x => x[4]).filter(Boolean))].join(' + ');
+const curStaff = () => VIEW ? (C.staff || '') : (staffOf(C) || $('staff').value.trim());
+// before a scan or a +/−: not while viewing a saved count, and only with a name
+function canCount() {
+  if (VIEW) { say('warn', bl('👁 You are viewing a saved count', '👁 អ្នកកំពុងមើលការរាប់ដែលបានរក្សាទុក'), bl('Tap “Back to my count” to scan.', 'ចុច «ត្រឡប់ទៅការរាប់របស់ខ្ញុំ» ដើម្បីស្កេន។')); sWarn(); return false; }
+  if (!$('staff').value.trim()) { say('bad', bl('✍ Type your name first', '✍ សូមវាយឈ្មោះរបស់អ្នកជាមុនសិន'), bl('Every count is saved under the name of the person counting.', 'ការរាប់នីមួយៗត្រូវរក្សាទុកក្រោមឈ្មោះអ្នករាប់។')); sBad(); buzz([200, 80, 200]); $('staff').focus(); return false; }
+  return true;
+}
 let LAST = '';           // PokPok code of the last scan (highlighted)
 
 function say(cls, big, small) { $('res').className = cls; $('res').innerHTML = `<div class="big">${big}</div>` + (small ? `<div>${small}</div>` : ''); }
@@ -219,6 +265,7 @@ const attrTxt = a => String(a || '').replace(/-/g, ' ').replace(/\s+/g, ' ').tri
 const itemName = it => esc((it[2] + ' ' + String(it[3] || '').replace(/-/g, ' ')).replace(/\s+/g, ' ').trim());
 function addCode(sale) { if (sale && !C.codes.includes(sale)) C.codes.unshift(sale); else if (sale) { C.codes = [sale, ...C.codes.filter(x => x !== sale)]; } }
 function count(it, raw, delta) {
+  if (!canCount()) return;
   const k = nz(it[0]); C.counts[k] = Math.max(0, (C.counts[k] || 0) + delta);
   C.scans.push([now(), raw, it[0], delta, $('staff').value.trim()]); addCode(nz(it[7])); LAST = k; save();
   const n = C.counts[k], vr = OKST.has(it[9]) ? `→ Vrich <b>${esc(it[6])}</b> ${esc(it[8])}` : `<b>⚠ ${bl(esc(ST_TXT[it[9]][0]), esc(ST_TXT[it[9]][1]))}</b>`;
@@ -227,6 +274,7 @@ function count(it, raw, delta) {
 }
 function handle(raw, retried) {
   const n = nz(raw); if (!n || !MAP) return;
+  if (!canCount()) return;
   hidePick();
   let c = IX.byNum.get(n) || [];
   if (!c.length) c = IX.byStock.get(n) || [];                 // a Vrich stock code typed in
@@ -255,7 +303,8 @@ function render() {
   let pcs = 0; Object.values(C.counts).forEach(n => { pcs += n; });
   const unk = Object.values(C.unknown).reduce((a, n) => a + n, 0), diff = C.codes.reduce((a, s) => a + variantsOf(s).filter(it => it[4] != null && (C.counts[nz(it[0])] || 0) !== it[4]).length, 0);
   $('tot').innerHTML = `<div class="cell"><b>${fmt(pcs)}</b><span>${bi('pieces counted', 'ដុំដែលបានរាប់')}</span></div><div class="cell"><b>${fmt(C.codes.length)}</b><span>${bi('product codes', 'កូដទំនិញ')}</span></div><div class="cell"><b>${fmt(diff)}</b><span>${bi('variants ≠ PokPok qty', 'ប្រភេទខុសពីចំនួន PokPok')}</span></div>` + (unk ? `<div class="cell"><b style="color:#b91c1c">${fmt(unk)}</b><span>${bi('unknown labels', 'ស្លាកមិនស្គាល់')}</span></div>` : '');
-  $('undo').disabled = !C.scans.length;
+  $('undo').disabled = !!VIEW || !C.scans.length; $('reset').disabled = !!VIEW; $('cloudsave').disabled = !!VIEW;
+  document.body.classList.toggle('viewing', !!VIEW);
   $('codes').innerHTML = C.codes.map((s, ci) => {
     const vs = variantsOf(s), n = vs.reduce((a, it) => a + (C.counts[nz(it[0])] || 0), 0), sys = vs.reduce((a, it) => a + (it[4] || 0), 0), cur = vs.some(it => nz(it[0]) === LAST);
     const vonly = (IX.vBySale.get(s) || []).filter(v => v[3] === 'nopok' || v[3] === 'words');
@@ -267,15 +316,134 @@ function render() {
   $('codes').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const it = IX.byPok.get(nz(b.dataset.m)); if (!(C.counts[nz(it[0])] > 0)) return; count(it, '(−)', -1); say('info', `<span class="n">${C.counts[nz(it[0])]}</span> · ${itemName(it)}`, bl('−1 removed', '−1 បានដក')); });
 }
 $('undo').onclick = () => {
+  if (VIEW) return;
   const s = C.scans.pop(); if (!s) return;
   if (s[2]) { const k = nz(s[2]); C.counts[k] = Math.max(0, (C.counts[k] || 0) - s[3]); if (!C.counts[k]) delete C.counts[k]; const it = IX.byPok.get(k); say('info', bl('↩ Undone', '↩ បានដកវិញ'), it ? `${itemName(it)} → ${C.counts[k] || 0}` : ''); }
   else { const n = s[1]; C.unknown[n] = (C.unknown[n] || 1) - 1; if (!C.unknown[n]) delete C.unknown[n]; say('info', bl('↩ Undone', '↩ បានដកវិញ'), esc(n)); }
   save(); render(); focusScan();
 };
-$('reset').onclick = () => {
-  if (C.scans.length && !confirm(Lc('Start a new count? This count is cleared from this device — export the report first.', 'ចាប់ផ្តើមរាប់ថ្មី? ការរាប់នេះនឹងត្រូវលុបពីឧបករណ៍នេះ — សូមទាញយករបាយការណ៍ជាមុនសិន។'))) return;
-  C = { start: now(), counts: {}, codes: [], scans: [], unknown: {} }; LAST = ''; save(); render(); say('', '', ''); focusScan();
+$('reset').onclick = async () => {
+  if (VIEW) return;
+  if (C.scans.length && !confirm(Lc('Start a new count? This count is cleared from this device (the copy online stays for the manager) — export the report first.', 'ចាប់ផ្តើមរាប់ថ្មី? ការរាប់នេះនឹងត្រូវលុបពីឧបករណ៍នេះ (ច្បាប់ចម្លងលើប្រព័ន្ធនៅសម្រាប់អ្នកគ្រប់គ្រង) — សូមទាញយករបាយការណ៍ជាមុនសិន។'))) return;
+  if (CLOUD.ver !== CLOUD.saved) await cloudSave('now');                // the last changes go online first
+  C = newCount(); LAST = ''; save(); CLOUD.saved = CLOUD.ver; CLOUD.at = ''; CLOUD.err = ''; render(); cloudShow(); say('', '', ''); focusScan();
 };
+
+/* ---------- ☁ the count online (sv2_counts/<count id>): one document per count, few writes ---------- */
+const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
+// force: false = the minute timer (≥ 60 s since the last save) · 'hide' = page hidden (≥ 10 s) · 'now' = the button
+async function cloudSave(force) {
+  if (VIEW || CLOUD.busy || CLOUD.ver === CLOUD.saved) return;
+  if (!C.scans.length && !C.codes.length) return;
+  if (Date.now() - CLOUD.last < (force === 'now' ? 0 : force === 'hide' ? 10000 : 60000)) return;
+  if (force !== 'now' && Date.now() < CLOUD.off) return;              // refused a moment ago: wait before trying again
+  if (!window.pako || !window.firebase) { CLOUD.err = 'offline'; cloudShow(); return; }
+  CLOUD.busy = true; cloudShow();
+  const ver = CLOUD.ver, c = C;
+  try {
+    const u = await withTimeout(fbReady(), 15000);
+    const base = { v: 1, id: c.id, start: c.start, counts: c.counts, codes: c.codes, unknown: c.unknown };
+    let gz = pako.gzip(JSON.stringify(Object.assign({ scans: c.scans }, base))), hasScans = true;
+    if (gz.length > 700000) { gz = pako.gzip(JSON.stringify(base)); hasScans = false; }          // a document must stay under 1 MB
+    await withTimeout(FB.db.collection(CNT_COL).doc(c.id).set({
+      id: c.id, uid: u.uid, dev: DEV, staff: staffOf(c) || $('staff').value.trim(), start: c.start, at: now(), atMs: Date.now(),
+      pcs: Object.values(c.counts).reduce((a, n) => a + n, 0), codes: c.codes.length, unknown: Object.values(c.unknown).reduce((a, n) => a + n, 0),
+      scans: c.scans.length, hasScans, map: String(MAP && MAP.at || ''), data: firebase.firestore.Blob.fromUint8Array(gz)
+    }), 20000);                                                                                     // 1 write
+    if (c === C) CLOUD.saved = ver;
+    CLOUD.at = now(); CLOUD.err = '';
+  } catch (e) {
+    const m = (e && (e.code || e.message)) || String(e);
+    CLOUD.err = /permission/i.test(m) ? 'refused' : m === 'offline' || m === 'timeout' || /unavailable|network/i.test(m) ? 'offline' : m;
+    if (CLOUD.err === 'refused') CLOUD.off = Date.now() + 10 * 60e3;
+  } finally { CLOUD.last = Date.now(); CLOUD.busy = false; cloudShow(); }
+}
+function cloudShow() {
+  const el = $('cloudst'); if (!el) return;
+  if (VIEW) { el.className = 'mut'; el.innerHTML = ''; return; }
+  const pending = CLOUD.ver !== CLOUD.saved && (C.scans.length || C.codes.length);
+  if (CLOUD.busy) { el.className = 'mut'; el.innerHTML = bl('☁ Saving…', '☁ កំពុងរក្សាទុក…'); return; }
+  if (CLOUD.err === 'refused') { el.className = 'bad'; el.innerHTML = bl('☁ Online save refused — ask the manager to update the Firebase rules (sv2_counts). The count is still safe on this device.', '☁ រក្សាទុកលើប្រព័ន្ធមិនបាន — សុំអ្នកគ្រប់គ្រងកែ Firebase rules (sv2_counts)។ ការរាប់នៅតែមានសុវត្ថិភាពលើឧបករណ៍នេះ។'); return; }
+  if (CLOUD.err && pending) { el.className = 'wait'; el.innerHTML = bl('☁ Not saved online (' + esc(CLOUD.err === 'offline' ? 'no internet' : CLOUD.err) + ') — it tries again every minute. The count is safe on this device.', '☁ មិនទាន់រក្សាទុកលើប្រព័ន្ធ (' + esc(CLOUD.err === 'offline' ? 'គ្មានអ៊ីនធឺណិត' : CLOUD.err) + ') — វាសាកម្តងទៀតរៀងរាល់នាទី។ ការរាប់មានសុវត្ថិភាពលើឧបករណ៍នេះ។'); return; }
+  if (pending) { el.className = 'wait'; el.innerHTML = bl('☁ Saves online within a minute' + (CLOUD.at ? ' · last saved ' + esc(CLOUD.at.slice(11, 16)) : ''), '☁ នឹងរក្សាទុកលើប្រព័ន្ធក្នុងមួយនាទី' + (CLOUD.at ? ' · ចុងក្រោយ ' + esc(CLOUD.at.slice(11, 16)) : '')); return; }
+  el.className = CLOUD.at ? 'ok' : 'mut'; el.innerHTML = CLOUD.at ? bl('☁ Saved online ' + esc(CLOUD.at.slice(11, 16)), '☁ បានរក្សាទុកលើប្រព័ន្ធ ' + esc(CLOUD.at.slice(11, 16))) : '';
+}
+$('cloudsave').onclick = async () => { if (CLOUD.ver === CLOUD.saved) { CLOUD.at = CLOUD.at || ''; say('info', bl('☁ Already saved online', '☁ បានរក្សាទុករួចហើយ'), ''); cloudShow(); focusScan(); return; } await cloudSave('now'); if (CLOUD.ver === CLOUD.saved) say('ok', bl('☁ Saved online', '☁ បានរក្សាទុកលើប្រព័ន្ធ'), bl('The manager can open it on the laptop.', 'អ្នកគ្រប់គ្រងអាចបើកវាលើកុំព្យូទ័រ។')); focusScan(); };
+setInterval(() => cloudSave(false), 15000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cloudSave('hide'); });
+
+/* ---------- 💻 manager: open saved counts on a laptop ---------- */
+const MGR = { list: [], busy: false, msg: '' };
+const mgrUser = () => FB && FB.auth.currentUser && !FB.auth.currentUser.isAnonymous ? FB.auth.currentUser : null;
+function mgrDraw() {
+  const el = $('mgrbody'), u = mgrUser(), m = MGR.msg ? `<div class="mut" style="margin-top:6px">${MGR.msg}</div>` : '';
+  if (!u) {
+    el.innerHTML = `<div class="mut">${bi('Log in with the manager account (the same as the upload page) to see every count saved online.', 'ចូលដោយគណនីអ្នកគ្រប់គ្រង (ដូចទំព័របញ្ចូល) ដើម្បីមើលការរាប់ទាំងអស់ដែលបានរក្សាទុក។')}</div>
+      <div class="row"><input id="mgemail" type="email" placeholder="Email" autocomplete="username" style="flex:1 1 200px"><input id="mgpass" type="password" placeholder="Password" autocomplete="current-password" style="flex:1 1 150px"><button class="pri" id="mglogin">${bl('Log in', 'ចូល')}</button></div>${m}`;
+    $('mglogin').onclick = mgrLogin; $('mgpass').onkeydown = e => { if (e.key === 'Enter') mgrLogin(); };
+    return;
+  }
+  const rows = MGR.list.map((d, i) => `<div class="crow"><input type="checkbox" data-i="${i}" aria-label="tick"><div><b>${esc(d.staff || '?')}</b> · ${bl('started ' + esc(String(d.start || '').slice(5, 16)), 'ចាប់ផ្តើម ' + esc(String(d.start || '').slice(5, 16)))}<div class="mut">${bl(fmt(d.pcs) + ' pcs · ' + fmt(d.codes) + ' codes' + (d.unknown ? ' · ' + fmt(d.unknown) + ' unknown' : '') + ' · saved ' + esc(String(d.at || '').slice(5, 16)), fmt(d.pcs) + ' ដុំ · ' + fmt(d.codes) + ' កូដ · រក្សាទុក ' + esc(String(d.at || '').slice(5, 16)))}</div></div><div class="act"><button data-o="${i}">${bl('Open', 'បើក')}</button><button data-d="${i}" aria-label="delete">🗑</button></div></div>`).join('');
+  el.innerHTML = `<div class="mut">${bl('✓ Manager: ' + esc(u.email || ''), '✓ អ្នកគ្រប់គ្រង៖ ' + esc(u.email || ''))} · ${bl('counts of the last 30 days', 'ការរាប់ក្នុង 30 ថ្ងៃចុងក្រោយ')}</div>
+    <div class="row"><button id="mgload">${bl('🔄 Refresh list', '🔄 ផ្ទុកបញ្ជីឡើងវិញ')}</button><button class="pri" id="mgcomb">${bl('Open ticked together (combine)', 'បើកដែលបានគូសរួមគ្នា (បញ្ចូលគ្នា)')}</button><button id="mgout">${bl('Log out', 'ចាកចេញ')}</button></div>${m}` +
+    (MGR.list.length ? rows : `<div class="mut" style="margin-top:8px">${bl('No counts saved online yet.', 'មិនទាន់មានការរាប់លើប្រព័ន្ធ។')}</div>`);
+  $('mgload').onclick = () => mgrLoad();
+  $('mgout').onclick = async () => { if (VIEW) closeView(); await FB.auth.signOut(); MGR.list = []; MGR.msg = ''; mgrDraw(); };
+  $('mgcomb').onclick = () => { const t = [...el.querySelectorAll('[data-i]:checked')].map(x => MGR.list[+x.dataset.i]); if (!t.length) { MGR.msg = esc(L('Tick the counts to combine first.', 'សូមគូសការរាប់ដែលត្រូវបញ្ចូលគ្នាជាមុនសិន។')); mgrDraw(); return; } openCounts(t); };
+  el.querySelectorAll('[data-o]').forEach(b => b.onclick = () => openCounts([MGR.list[+b.dataset.o]]));
+  el.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => {
+    const d = MGR.list[+b.dataset.d];
+    if (!confirm(Lc('Delete the count of ' + (d.staff || '?') + ' (started ' + String(d.start).slice(5, 16) + ') from online? It cannot be undone.', 'លុបការរាប់របស់ ' + (d.staff || '?') + ' ពីប្រព័ន្ធ? មិនអាចយកមកវិញបានទេ។'))) return;
+    try { await FB.db.collection(CNT_COL).doc(d.id).delete(); MGR.list = MGR.list.filter(x => x !== d); MGR.msg = esc(L('Deleted', 'បានលុប')); } catch (e) { MGR.msg = '<b style="color:#991b1b">' + esc(e.code || e.message) + '</b>'; }
+    mgrDraw();
+  });
+}
+async function mgrLogin() {
+  MGR.msg = esc(L('Logging in…', 'កំពុងចូល…')); const em = $('mgemail').value.trim(), pw = $('mgpass').value; mgrDraw();
+  try { await fbInit(); await FB.auth.signInWithEmailAndPassword(em, pw); MGR.msg = ''; await mgrLoad(); }
+  catch (e) { MGR.msg = '<b style="color:#991b1b">' + esc(L('Login failed: ', 'ចូលមិនបាន៖ ') + (e.code || e.message)) + '</b>'; mgrDraw(); }
+}
+// 1 read per count listed (the counts carry their data, so opening one costs nothing more); counts older than 30 days are deleted
+async function mgrLoad() {
+  if (MGR.busy || !mgrUser()) return; MGR.busy = true; MGR.msg = esc(L('Loading…', 'កំពុងផ្ទុក…')); mgrDraw();
+  try {
+    const cut = Date.now() - 30 * 864e5;
+    const q = await FB.db.collection(CNT_COL).where('atMs', '>=', cut).orderBy('atMs', 'desc').limit(60).get();
+    MGR.list = q.docs.map(d => d.data()); MGR.msg = '';
+    try { const old = await FB.db.collection(CNT_COL).where('atMs', '<', cut).limit(20).get(); if (!old.empty) { const b = FB.db.batch(); old.docs.forEach(d => b.delete(d.ref)); await b.commit(); } } catch (e) {}
+  } catch (e) { const m = e.code || e.message; MGR.msg = '<b style="color:#991b1b">' + esc(/permission/i.test(m) ? L('Refused — is this the manager account, and are the Firebase rules for sv2_counts in place?', 'បដិសេធ — តើនេះជាគណនីអ្នកគ្រប់គ្រង ហើយ Firebase rules សម្រាប់ sv2_counts មានហើយឬនៅ?') : m) + '</b>'; }
+  MGR.busy = false; mgrDraw();
+}
+$('mgr').addEventListener('toggle', async () => { if (!$('mgr').open) return; MGR.msg = ''; try { await fbInit(); } catch (e) { MGR.msg = esc(L('No internet', 'គ្មានអ៊ីនធឺណិត')); } if (mgrUser() && !MGR.list.length) mgrLoad(); else mgrDraw(); });
+
+// open one saved count, or several added together — read only (report, size chart and pictures work as usual)
+function openCounts(docs) {
+  try {
+    const parts = docs.map(d => Object.assign(JSON.parse(new TextDecoder().decode(pako.ungzip(d.data.toUint8Array()))), { staff: d.staff }));
+    const m = { id: 'view', start: parts.map(p => String(p.start || '')).sort()[0], counts: {}, codes: [], scans: [], unknown: {}, staff: [...new Set(parts.map(p => p.staff).filter(Boolean))].join(' + ') };
+    parts.forEach(p => {
+      Object.entries(p.counts || {}).forEach(([k, n]) => { m.counts[k] = (m.counts[k] || 0) + n; });
+      (p.codes || []).forEach(c => { if (!m.codes.includes(c)) m.codes.push(c); });
+      Object.entries(p.unknown || {}).forEach(([k, n]) => { m.unknown[k] = (m.unknown[k] || 0) + n; });
+      (p.scans || []).forEach(x => m.scans.push(x));
+    });
+    m.scans.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    VIEW = { label: docs.map(d => (d.staff || '?') + ' (' + String(d.start || '').slice(5, 16) + ')').join(' + '), n: docs.length, noScans: docs.some(d => !d.hasScans) };
+    C = m; LAST = ''; hidePick(); render(); cloudShow(); viewBar();
+    say('info', bl('👁 Opened · ' + fmt(Object.values(m.counts).reduce((a, n) => a + n, 0)) + ' pcs', '👁 បានបើក · ' + fmt(Object.values(m.counts).reduce((a, n) => a + n, 0)) + ' ដុំ'), esc(VIEW.label));
+    $('viewbar').scrollIntoView({ block: 'center', behavior: 'smooth' });
+  } catch (e) { MGR.msg = '<b style="color:#991b1b">' + esc(L('Could not open: ', 'មិនអាចបើក៖ ') + (e.message || e)) + '</b>'; mgrDraw(); }
+}
+function viewBar() {
+  const el = $('viewbar');
+  if (!VIEW) { el.classList.add('hide'); el.innerHTML = ''; return; }
+  el.classList.remove('hide');
+  el.innerHTML = `<div><b>👁 ${bl(VIEW.n > 1 ? 'Combined ' + VIEW.n + ' counts' : 'Saved count', VIEW.n > 1 ? 'បញ្ចូលការរាប់ ' + VIEW.n : 'ការរាប់ដែលបានរក្សាទុក')}</b>: ${esc(VIEW.label)}</div>
+    <div class="mut">${bl('Read only — Export, Size chart and pictures work. Nothing here changes the saved count.', 'អានតែប៉ុណ្ណោះ — ទាញយក តារាងទំហំ និងរូបភាព ប្រើបាន។ គ្មានអ្វីប្តូរការរាប់ដែលបានរក្សាទុកទេ។')}${VIEW.noScans ? '<br>' + bl('A big count was saved without its scan list — the Scans sheet is in the report of the phone that counted.', 'ការរាប់ធំត្រូវរក្សាទុកដោយគ្មានបញ្ជីស្កេន — សន្លឹក Scans មាននៅក្នុងរបាយការណ៍ពីទូរស័ព្ទដែលរាប់។') : ''}</div>
+    <div class="row"><button class="pri" id="viewback">${bl('↩ Back to my count', '↩ ត្រឡប់ទៅការរាប់របស់ខ្ញុំ')}</button></div>`;
+  $('viewback').onclick = closeView;
+}
+function closeView() { VIEW = null; C = LS.get('session', null) || newCount(); LAST = ''; render(); cloudShow(); viewBar(); say('', '', ''); focusScan(); }
 
 /* ---------- size chart (stock-take layout, as in the Stock Take sheet) ---------- */
 const SZ_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL'];
@@ -425,13 +593,13 @@ tr.tot td{background:#fff;font-weight:700}tr.tot td.lab{text-align:left;font-siz
 $('printchart').onclick = () => {
   if (!MAP || !C.codes.length) { say('warn', bl('Nothing counted yet', 'មិនទាន់បានរាប់អ្វីទេ'), ''); return; }
   const w = window.open('', '_blank'); if (!w) { say('warn', bl('Allow pop-ups to print', 'សូមអនុញ្ញាត pop-up ដើម្បីបោះពុម្ព'), ''); return; }
-  w.document.write(sizeChartHtml(sizeChart(C.codes.slice().sort()), $('staff').value.trim(), now())); w.document.close();
+  w.document.write(sizeChartHtml(sizeChart(C.codes.slice().sort()), curStaff(), now())); w.document.close();
 };
 
 /* ---------- report (.xlsx) ---------- */
 $('export').onclick = () => {
   if (!MAP || !C.codes.length && !Object.keys(C.unknown).length) { say('warn', bl('Nothing counted yet', 'មិនទាន់បានរាប់អ្វីទេ'), ''); return; }
-  const staff = $('staff').value.trim(), stamp = now(), codes = C.codes.slice().sort();
+  const staff = curStaff(), stamp = now(), codes = C.codes.slice().sort();
   const pokRows = [], vMap = new Map(), check = [];
   codes.forEach(s => {
     variantsOf(s).forEach(it => {
@@ -451,7 +619,7 @@ $('export').onclick = () => {
   sheet('Vrich', ['Product code', 'Vrich stock code', 'Description', 'Counted', 'From PokPok items', 'Note'], vRows, [10, 16, 22, 9, 30, 30]);
   sheet('Check', ['Product code', 'PokPok code / label', 'Item', 'Counted', 'Why', 'Vrich candidates'], check, [10, 16, 22, 9, 40, 40]);
   sheet('Scans', ['Time', 'Scanned', 'PokPok code', '+/−', 'Staff'], C.scans, [19, 14, 12, 5, 12]);
-  const info = XLSX.utils.aoa_to_sheet([['VHM Stock Count'], ['Counted by', staff], ['Started', C.start], ['Exported', stamp], ['Map made', String(MAP.at)], ['PokPok list', String(MAP.pok && MAP.pok.at || '')], ['Vrich list', String(MAP.vrich && MAP.vrich.at || '')], ['Product codes', codes.length], ['Pieces counted', Object.values(C.counts).reduce((a, n) => a + n, 0)]]);
+  const info = XLSX.utils.aoa_to_sheet([['VHM Stock Count'], ['Counted by', staff], ['Started', C.start], ['Count', VIEW ? 'Opened from online: ' + VIEW.label : 'This device (' + C.id + ')'], ['Exported', stamp], ['Map made', String(MAP.at)], ['PokPok list', String(MAP.pok && MAP.pok.at || '')], ['Vrich list', String(MAP.vrich && MAP.vrich.at || '')], ['Product codes', codes.length], ['Pieces counted', Object.values(C.counts).reduce((a, n) => a + n, 0)]]);
   info['!cols'] = [{ wch: 16 }, { wch: 24 }]; XLSX.utils.book_append_sheet(wb, info, 'Info');
   XLSX.writeFile(wb, 'stock-count-' + stamp.slice(0, 16).replace(/[: ]/g, '-') + (staff ? '-' + staff.replace(/[^\wក-៿-]+/g, '') : '') + '.xlsx');
   say('ok', bl('⬇ Report downloaded', '⬇ បានទាញយករបាយការណ៍'), bl('Size chart → print / check · PokPok sheet → PokPok person · Vrich sheet → Vrich person · Check → manager', 'តារាងទំហំ → បោះពុម្ព · សន្លឹក PokPok → អ្នក PokPok · សន្លឹក Vrich → អ្នក Vrich · ពិនិត្យ → អ្នកគ្រប់គ្រង'));
@@ -461,7 +629,7 @@ $('export').onclick = () => {
 const focusScan = () => { if (!$('countcard').classList.contains('hide')) $('scan').focus({ preventScroll: true }); };
 $('scan').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = e.target.value; e.target.value = ''; handle(v); } });
 $('staff').value = LS.get('staff', ''); $('staff').onchange = () => LS.set('staff', $('staff').value.trim());
-setLang(LANG);
+setLang(LANG); cloudShow();
 (async () => { const m = await IDB.get('map'); if (m && Array.isArray(m.items)) { MAP = m; IX = index(m); } showMapInfo(); render(); checkMap(true); if (C.scans.length) say('info', bl('Count continued', 'បន្តការរាប់'), bl(fmt(C.scans.length) + ' scans on this device since ' + esc(C.start), fmt(C.scans.length) + ' ស្កេនលើឧបករណ៍នេះ ចាប់ពី ' + esc(C.start))); focusScan(); })();
 </script>
 </body>
