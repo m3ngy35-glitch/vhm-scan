@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VHM Customer Profiler</title>
+<!-- VHM Customer Profiler 2 (10 Nov 2026): reads customer orders from Firebase (prof_days), filled by the Vrich order upload on
+     VHM Scan's upload page (box 3). Only the owner Google account can open the data (Firestore rules). Old exports can still be
+     dropped in once to backfill history; they are saved online too. Live Log weights are saved online (prof_meta/weights). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#F3F4F6; --surface:#FFFFFF; --ink:#171A21; --muted:#5F6573; --line:#DDE1E8;
+  --tape:#E3A21A; --tape-ink:#8A5A00; --tape-soft:#FBF0D6;
+  --warn:#B4412B; --warn-soft:#F8E4DF; --ok:#2E7550; --ok-soft:#E0F0E7;
+  --sel:#EEF0F4;
+  --f-body:"Kantumruy Pro", "Noto Sans Khmer", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#12141A; --surface:#1B1E26; --ink:#ECEEF2; --muted:#9AA0AD; --line:#2C303B;
+  --tape:#E8AE33; --tape-ink:#F2C766; --tape-soft:#3A2F17;
+  --warn:#EE8A74; --warn-soft:#3D2420; --ok:#7CCB9F; --ok-soft:#1D3328; --sel:#242833; color-scheme:dark }}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+#profile,.look>*{min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 13px;font-weight:500}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.55;cursor:default}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+:focus-visible{outline:2px solid var(--tape);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;flex-direction:column;gap:2px}
+.status{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:13.5px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:99px;font-size:12.5px;font-weight:600;background:var(--sel)}
+.pill.ex{background:var(--tape-soft);color:var(--tape-ink)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.drop{border:1.5px dashed var(--line);border-radius:12px;background:var(--surface);padding:14px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.drop.over{border-color:var(--tape);background:var(--tape-soft)}
+.drop p{margin:0;flex:1 1 280px;min-width:0;font-size:13.5px}
+.signin{max-width:520px;margin:8vh auto 0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;display:grid;gap:12px;justify-items:start}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:9px 14px;color:var(--muted);font-weight:600;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--tape)}
+.tab .n{font-family:var(--f-mono);font-size:12px;margin-left:6px;color:var(--muted)}
+.look{display:grid;grid-template-columns:minmax(260px,330px) 1fr;gap:18px;align-items:start}
+@media (max-width:820px){.look{grid-template-columns:1fr}}
+.side{display:flex;flex-direction:column;gap:10px;min-width:0}
+.search{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:16px}
+.results{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;max-height:560px;overflow-y:auto}
+.res{display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:10px 13px;background:none}
+.res:last-child{border-bottom:0}
+.res[aria-current="true"]{background:var(--sel);box-shadow:inset 3px 0 0 var(--tape)}
+.res .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res .sub{grid-column:1/-1;font-size:12.5px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:20px;min-width:0}
+.who{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 20px;align-items:flex-start}
+.who h2{font-size:24px;font-weight:700;line-height:1.2}
+.idline{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin-top:4px;font-size:14px}
+.copy{padding:2px 9px;font-size:12px;border-radius:6px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stat{background:var(--surface);padding:10px 13px;display:flex;flex-direction:column;gap:1px}
+.stat b{font-family:var(--f-mono);font-size:19px;font-weight:500}
+@media (max-width:520px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fits{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.fit{border:1px solid var(--line);border-radius:10px;padding:13px 14px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.fit .big{display:flex;align-items:baseline;gap:8px}
+.fit .big b{font-size:30px;line-height:1;font-weight:700}
+.fit.none .big b{font-size:17px;color:var(--muted);font-weight:500}
+.wpanel{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px;flex:1 1 100%}
+.wpanel textarea{width:100%;min-height:110px;font-family:var(--f-mono);font-size:12.5px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);resize:vertical}
+.wrow{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:13.5px;flex:1 1 100%}
+.kgscale{position:relative;height:34px;border-radius:4px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.kgscale .r{position:absolute;height:4px;background:var(--muted);opacity:.35;border-radius:2px}
+.kgscale .r.def{background:transparent;border-top:2px dashed var(--muted);height:0}
+.kgscale .est{position:absolute;top:0;bottom:12px;background:var(--tape);opacity:.9}
+.kgscale .me{position:absolute;top:0;bottom:12px;width:3px;background:var(--ink)}
+.kgscale .tk{position:absolute;bottom:0;font-family:var(--f-mono);font-size:9.5px;color:var(--muted);transform:translateX(-50%)}
+.tapebar{display:flex;border-radius:4px;overflow:hidden;background:var(--tape-soft);border:1px solid var(--line)}
+.tapebar span{flex:1;min-width:0;text-align:center;font-family:var(--f-mono);font-size:10.5px;padding:5px 0 3px;position:relative;color:var(--muted);border-left:1px solid color-mix(in srgb,var(--tape) 35%,transparent)}
+.tapebar span:first-child{border-left:0}
+.tapebar span.has{color:var(--ink);font-weight:500}
+.tapebar span.usual{background:var(--tape);color:#1d1503;font-weight:600}
+.tapebar span i{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--tape-ink);opacity:.55}
+.tapebar span.usual i{display:none}
+.note{font-size:12.5px;color:var(--muted)}
+.later{display:flex;flex-wrap:wrap;gap:8px}
+.later .pill{font-weight:500}
+.sect{display:flex;flex-direction:column;gap:8px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr.skip td{color:var(--muted);text-decoration:line-through}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--sel)}
+.bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.bar select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.alerts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.alert{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:10px;padding:13px 15px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.alert .jump{display:flex;align-items:baseline;gap:8px;font-size:15px}
+.alert .jump b{font-family:var(--f-mono);font-size:20px}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:22px;color:var(--muted)}
+.foot{font-size:12.5px;color:var(--muted);max-width:72ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>VHM Customer Profiler</h1>
+      <div class="status" id="status"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="actions" hidden>
+      <button id="btnReload">↻ Reload</button>
+      <button id="btnLoad">Add old Vrich exports</button>
+      <button id="btnOut">Sign out</button>
+    </div>
+  </header>
+
+  <section class="signin" id="signin">
+    <span class="lbl">Owner access</span>
+    <h2>Sign in to see customer profiles</h2>
+    <p class="muted" style="margin:0">Profiles fill themselves from the Vrich order file uploaded every day on VHM Scan's upload page. Use the owner Google account.</p>
+    <button class="primary" id="btnIn" disabled>Sign in with Google</button>
+    <span class="muted" id="signMsg" role="status">Connecting…</span>
+  </section>
+
+  <div id="app" hidden style="display:flex;flex-direction:column;gap:18px">
+  <div class="drop" id="drop">
+    <p><b>Profiles update by themselves</b> each time the Vrich order file is uploaded on VHM Scan's upload page (box 3). To add older history once, drop older Vrich order exports here; they are saved online too. Orders already saved are left as they are.</p>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv,.tsv,.txt" multiple hidden>
+    <div class="wrow" id="wrow"></div>
+    <div class="wpanel" id="wpanel" hidden>
+      <span>In <b>VHM Live Log</b>, open <b>Export / Import via spreadsheet</b>, tap <b>Export weights</b>, then <b>Copy for spreadsheet</b>. Paste it here. Pasting again replaces the old weights.</span>
+      <textarea id="wBox" placeholder="Code&#9;Size&#9;Weight&#10;E369&#9;L&#9;58-68&#10;E369&#9;XL&#9;65-75"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="primary" id="wSave">Save weights</button><button id="wCancel">Cancel</button><span class="muted" id="wMsg" style="font-size:13px"></span></div>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="t-look" aria-selected="true" data-v="look">Look up customer</button>
+    <button class="tab" role="tab" id="t-alerts" aria-selected="false" data-v="alerts">Size alerts<span class="n" id="nAlerts"></span></button>
+    <button class="tab" role="tab" id="t-top" aria-selected="false" data-v="top">Top customers<span class="n" id="nTop"></span></button>
+  </nav>
+
+  <section id="v-look" class="look">
+    <div class="side">
+      <input class="search" id="q" type="search" placeholder="Phone or Facebook name" autocomplete="off">
+      <div class="results" id="results"></div>
+    </div>
+    <div id="profile"></div>
+  </section>
+
+  <section id="v-alerts" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div class="bar">
+      <label for="aDate" class="lbl">Orders on</label>
+      <select id="aDate"></select>
+      <span class="muted" style="font-size:13.5px">Flags any top or bottom that is 2+ sizes away from what the customer usually buys. Check with the customer before it ships.</span>
+    </div>
+    <div class="alerts" id="alerts"></div>
+  </section>
+
+  <section id="v-top" hidden style="display:flex;flex-direction:column;gap:12px">
+    <div class="bar">
+      <label for="tFilter" class="lbl">Show</label>
+      <select id="tFilter"><option value="repeat">Repeat customers (2+ orders)</option><option value="all">All customers</option></select>
+      <label for="tSort" class="lbl">Sort by</label>
+      <select id="tSort"><option value="spend">Total spend</option><option value="orderCount">Orders</option><option value="last">Last order</option></select>
+      <button id="btnCopy">Copy table for Sheets</button>
+      <span class="muted" id="copyMsg" style="font-size:13px"></span>
+    </div>
+    <div class="tbl"><table id="topTbl"></table></div>
+  </section>
+
+  <p class="foot">Profiles count paid orders only (Transferred above $0). Unpaid orders are left out of spend, sizes, alerts and rankings, and show crossed out in the order history. Re-uploading a day on VHM Scan updates its payment status. Usual size is the size bought most, by quantity, and tops and bottoms are kept separate. Customers are matched by phone number, taken from the phone field or from the address when staff typed it there. Orders with no phone are matched by Facebook name. Weight is the band most of a customer's tops and bottoms agree on, using the Live Log weight for that code and size. Codes not in the Live Log use its default size guide and are marked * in Top customers. A weight the customer typed in a comment (for example 64kg) is shown first.</p>
+  </div>
+</div>
+
+<script>
+// ===== Profiler core: parse Vrich order rows, build customer profiles (unchanged from Profiler 1) =====
+const LETTER = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL','6XL'];
+
+function normPhone(v){
+  if (v == null) return null;
+  let s = String(v).replace(/\D/g,'');
+  if (s.startsWith('855')) s = '0' + s.slice(3);
+  if (s && !s.startsWith('0')) s = '0' + s;
+  return (s.length >= 9 && s.length <= 10) ? s : null;
+}
+function phoneInText(t){
+  if (t == null) return null;
+  const m = String(t).match(/(?:\+?855[\s-]?|0)\d(?:[\s.-]?\d){6,8}/);
+  return m ? normPhone(m[0]) : null;
+}
+function serialToDate(v){
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return v.toISOString().slice(0,19).replace('T',' ');
+  if (typeof v === 'number'){
+    const d = XLSX.SSF.parse_date_code(v);
+    const p = n => String(n).padStart(2,'0');
+    return `${d.y}-${p(d.m)}-${p(d.d)} ${p(d.H)}:${p(d.M)}:${p(Math.floor(d.S))}`;
+  }
+  return String(v);
+}
+function normSize(tok){
+  if (!tok) return null;
+  let t = String(tok).toUpperCase().replace(/\s/g,'');
+  if (t === 'XXL') t = '2XL'; if (t === 'XXXL') t = '3XL'; if (t === 'XXXXL') t = '4XL';
+  if (LETTER.includes(t)) return { kind:'letter', label:t, rank:LETTER.indexOf(t) };
+  if (/^\d{2}$/.test(t)){ const n = +t; if (n >= 25 && n <= 48) return { kind:'num', label:t, rank:n }; }
+  return null;
+}
+function category(desc){
+  const w = String(desc||'').trim().split(/\s+/)[0] || '';
+  if (w.startsWith('អាវ')) return 'top';
+  if (w.startsWith('ខោ')) return 'bottom';
+  if (w.startsWith('ស្បែកជើង')) return 'shoe';
+  return 'other';
+}
+function weightIn(text){
+  if (text == null) return null;
+  const m = String(text).match(/(\d{2,3})\s*(?:kg|គីឡូ|គ\.ក)/i);
+  if (!m) return null; const n = +m[1];
+  return (n >= 35 && n <= 150) ? n : null;
+}
+
+// rows: objects keyed by Vrich column names (from an export, or rebuilt from Firebase)
+function parseRows(rows){
+  if (!rows.length || !('Order No.' in rows[0]) || !('Product Code' in rows[0])) return null;
+  const lines = [];
+  for (const r of rows){
+    if (r['Order No.'] == null) continue;
+    const desc = r['Description'] == null ? '' : String(r['Description']).trim();
+    const toks = desc.split(/\s+/);
+    const sz = normSize(toks[toks.length-1]);
+    const dt = serialToDate(r['Date/Time']) || serialToDate(r['Date']);
+    lines.push({
+      k: r['Order No.'] + '#' + r['No.'],
+      order: String(r['Order No.']),
+      date: (serialToDate(r['Date']) || dt || '').slice(0,10),
+      time: dt,
+      fb: r['Facebook Name'] == null ? '' : String(r['Facebook Name']).trim(),
+      cname: r['Customer Name'] == null ? '' : String(r['Customer Name']).trim(),
+      addr: r['Address'] == null ? '' : String(r['Address']).trim(),
+      tel: normPhone(r['Telephone']),
+      telAddr: phoneInText(r['Address']) || phoneInText(r['Customer Name']),
+      amount: +r['Amount'] || 0,
+      total: +r['Total'] || 0,
+      paid: +r['Transferred'] || 0,
+      printed: +r['Printed'] === 1,
+      code: r['Product Code'] == null ? '' : String(r['Product Code']).trim(),
+      desc,
+      color: toks.length >= 3 ? toks.slice(1,-1).join(' ') : '',
+      cat: category(desc),
+      size: sz,
+      qty: +r['Quantity'] || 1,
+      price: +r['Price'] || 0,
+      comment: r['Comment'] == null ? '' : String(r['Comment']),
+      kg: weightIn(r['Comment'])
+    });
+  }
+  return lines;
+}
+
+// ===== Weight estimate from VHM Live Log weights (Code | Size | Weight) =====
+let WEIGHTS = {};
+const DEFAULT_WEIGHTS = {'S':[45,55],'M':[50,60],'L':[58,68],'XL':[65,75],'2XL':[75,85],'3XL':[85,95],'4XL':[90,105]};
+function normCodeW(c){ return String(c==null?'':c).replace(/[\s​-‍﻿]/g,'').toUpperCase(); }
+function normSizeW(s){ const z = normSize(s); return z ? z.label : String(s==null?'':s).trim().toUpperCase(); }
+function parseWeight(v){
+  if (v == null) return null;
+  const n = String(v).replace(/[–—~]/g,'-').match(/\d{2,3}(?:\.\d)?/g);
+  if (!n) return null;
+  const a = +n[0], b = n.length > 1 ? +n[1] : +n[0];
+  const lo = Math.min(a,b), hi = Math.max(a,b);
+  return (lo >= 30 && hi <= 160) ? [lo,hi] : null;
+}
+function parseWeightRows(rows){
+  const out = {}; let n = 0;
+  for (const r of rows){
+    if (!r || r.length < 3) continue;
+    const code = normCodeW(r[0]), size = normSizeW(r[1]), w = parseWeight(r[2]);
+    if (!code || !size || code === 'CODE' || !w) continue;
+    out[code+'|'+size] = w; n++;
+  }
+  return n ? out : null;
+}
+function weightFor(l){
+  if (!l.size) return null;
+  const w = WEIGHTS[normCodeW(l.code)+'|'+l.size.label];
+  if (w) return { r:w, src:'log' };
+  if (l.cat === 'top' && DEFAULT_WEIGHTS[l.size.label]) return { r:DEFAULT_WEIGHTS[l.size.label], src:'default' };
+  return null;
+}
+function estimateWeight(lines){
+  const rs = [];
+  for (const l of lines){ const w = weightFor(l); if (w) for (let i=0;i<l.qty;i++) rs.push({lo:w.r[0],hi:w.r[1],src:w.src,code:l.code,size:l.size.label}); }
+  if (!rs.length) return null;
+  const pts = [...new Set(rs.flatMap(r=>[r.lo,r.hi]))].sort((a,b)=>a-b);
+  let best = 0, segs = [];
+  const cover = (a,b) => rs.filter(r => r.lo <= a && r.hi >= b).length;
+  if (pts.length === 1) { best = rs.length; segs = [[pts[0],pts[0]]]; }
+  for (let i=0;i<pts.length-1;i++){ const c = cover(pts[i],pts[i+1]);
+    if (c > best){ best = c; segs = [[pts[i],pts[i+1]]]; }
+    else if (c === best && c > 0){ const last = segs[segs.length-1]; if (last && last[1] === pts[i]) last[1] = pts[i+1]; else segs.push([pts[i],pts[i+1]]); } }
+  const seg = segs.sort((a,b)=>(a[1]-a[0])-(b[1]-b[0]))[0];
+  return { lo:seg[0], hi:seg[1], agree:best, total:rs.length,
+    fromLog: rs.filter(r=>r.src==='log').length, fromDefault: rs.filter(r=>r.src==='default').length, ranges: rs };
+}
+
+function buildModel(lineMap){
+  const lines = Object.values(lineMap);
+  const orders = {};
+  for (const l of lines){
+    const o = orders[l.order] || (orders[l.order] = { order:l.order, date:l.date, fb:l.fb, cname:l.cname, addr:l.addr,
+      tel:null, amount:l.amount, total:l.total, paid:l.paid, printed:false, lines:[] });
+    o.paid = Math.max(o.paid, l.paid);
+    o.lines.push(l);
+    o.tel = o.tel || l.tel || l.telAddr;
+    o.printed = o.printed || l.printed;
+    if (l.date < o.date) o.date = l.date;
+  }
+  const olist = Object.values(orders);
+  const fbPhones = {};
+  for (const o of olist) if (o.tel && o.fb){ (fbPhones[o.fb] = fbPhones[o.fb] || new Set()).add(o.tel); }
+  for (const o of olist){
+    if (o.tel) o.key = o.tel;
+    else if (o.fb && fbPhones[o.fb] && fbPhones[o.fb].size === 1){ o.key = [...fbPhones[o.fb]][0]; o.keyFrom = 'name'; }
+    else o.key = 'fb:' + (o.fb || ('order ' + o.order));
+    o.lines.sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+  }
+  const custs = {};
+  for (const o of olist){
+    const c = custs[o.key] || (custs[o.key] = { key:o.key, phone:o.key.startsWith('fb:') ? null : o.key,
+      names:{}, orders:[], allOrders:[] });
+    c.allOrders.push(o);
+    if (o.paid > 0) c.orders.push(o);
+    if (o.fb) c.names[o.fb] = (c.names[o.fb]||0)+1;
+  }
+  for (const c of Object.values(custs)) summarize(c);
+  return { orders: olist, custs };
+}
+
+function usualSize(items){
+  const kinds = {};
+  for (const l of items){ if (!l.size) continue;
+    const g = kinds[l.size.kind] || (kinds[l.size.kind] = {});
+    const e = g[l.size.label] || (g[l.size.label] = { label:l.size.label, rank:l.size.rank, qty:0, last:'' });
+    e.qty += l.qty; if ((l.time||'') > e.last) e.last = l.time||''; }
+  let best = null;
+  for (const [kind, g] of Object.entries(kinds)){
+    const arr = Object.values(g); const tot = arr.reduce((s,e)=>s+e.qty,0);
+    if (!best || tot > best.total) best = { kind, total:tot, arr };
+  }
+  if (!best) return null;
+  best.arr.sort((a,b)=> b.qty-a.qty || b.last.localeCompare(a.last));
+  const top = best.arr[0];
+  return { kind:best.kind, label:top.label, rank:top.rank, count:top.qty, total:best.total,
+    dist: best.arr.slice().sort((a,b)=>a.rank-b.rank) };
+}
+
+function summarize(c){
+  const os = c.orders.slice().sort((a,b)=> a.date.localeCompare(b.date));
+  const lines = os.flatMap(o=>o.lines);
+  c.name = Object.entries(c.names).sort((a,b)=>b[1]-a[1])[0]?.[0] || '(no name)';
+  c.otherNames = Object.keys(c.names).filter(n=>n!==c.name);
+  c.spend = +os.reduce((s,o)=>s+o.amount,0).toFixed(2);
+  c.orderCount = os.length;
+  c.items = lines.reduce((s,l)=>s+l.qty,0);
+  c.first = os[0]?.date || null; c.last = os[os.length-1]?.date || null;
+  c.top = usualSize(lines.filter(l=>l.cat==='top'));
+  c.bottom = usualSize(lines.filter(l=>l.cat==='bottom'));
+  c.shoe = usualSize(lines.filter(l=>l.cat==='shoe'));
+  c.lastItem = lines[lines.length-1] || null;
+  const kgs = c.allOrders.flatMap(o=>o.lines).filter(l=>l.kg).map(l=>l.kg);
+  c.kg = kgs.length ? kgs[kgs.length-1] : null;
+  c.w = estimateWeight(lines);
+  const latest = c.allOrders.slice().sort((a,b)=>b.date.localeCompare(a.date))[0];
+  c.addr = latest?.addr || ''; c.cname = latest?.cname || '';
+}
+
+function sizeAlerts(model, date){
+  const out = [];
+  for (const o of model.orders){
+    if (o.date !== date || !(o.paid > 0)) continue;
+    const c = model.custs[o.key];
+    const prior = c.orders.filter(p => p.date < date).flatMap(p=>p.lines);
+    for (const cat of ['top','bottom']){
+      const u = usualSize(prior.filter(l=>l.cat===cat));
+      if (!u || u.total < 2) continue;
+      for (const l of o.lines){
+        if (l.cat !== cat || !l.size || l.size.kind !== u.kind) continue;
+        const diff = l.size.rank - u.rank;
+        if (Math.abs(diff) >= 2) out.push({ order:o, cust:c, line:l, usual:u, diff, cat });
+      }
+    }
+  }
+  return out.sort((a,b)=> Math.abs(b.diff)-Math.abs(a.diff));
+}
+
+// ===== Firebase storage =====
+// prof_days/<YYYY-MM-DD> = { d, v, keys:[column names], at, by, o:{ <order no>: JSON array of rows, each row in `keys` order } }
+const PROF_COL = 'prof_days', META_COL = 'prof_meta';
+const PROF_KEYS = ['No.','Date','Date/Time','Facebook Name','Customer Name','Address','Telephone','Amount','Total','Transferred','Printed','Product Code','Description','Quantity','Price','Comment'];
+const FIREBASE = { apiKey:"AIzaSyCzA--FJTKl74TI0FRhDNGurnOimZjgja0", authDomain:"vhm-menu.firebaseapp.com", projectId:"vhm-menu",
+  storageBucket:"vhm-menu.firebasestorage.app", messagingSenderId:"728781560326", appId:"1:728781560326:web:4f88ffa992cb6175f40187" };
+
+// a stored day -> row objects with Vrich column names (what parseRows reads)
+function rowsFromDoc(doc){
+  const keys = doc.keys || PROF_KEYS, out = [];
+  for (const [id, txt] of Object.entries(doc.o || {})){
+    let rows; try { rows = JSON.parse(txt); } catch(e){ continue; }
+    if (!Array.isArray(rows)) continue;
+    rows.forEach((r, i) => {
+      const o = { 'Order No.': id };
+      keys.forEach((k, j) => { const v = r[j]; o[k] = v === '' || v === undefined ? null : v; });
+      if (o['No.'] == null) o['No.'] = i + 1;
+      out.push(o);
+    });
+  }
+  return out;
+}
+// an export's row objects -> { date: { order no: JSON rows } } in the stored format
+function rowsToDays(rows){
+  const byOrder = {};
+  for (const r of rows){
+    const id = r['Order No.'] == null ? '' : String(r['Order No.']).trim();
+    if (!id || /[\/.#$\[\]]/.test(id)) continue;
+    (byOrder[id] = byOrder[id] || []).push(r);
+  }
+  const days = {};
+  for (const [id, rs] of Object.entries(byOrder)){
+    const d = rs.map(r => (serialToDate(r['Date']) || serialToDate(r['Date/Time']) || '').slice(0,10)).find(x => /^\d{4}-\d\d-\d\d$/.test(x));
+    if (!d) continue;
+    const arr = rs.map(r => PROF_KEYS.map((k, j) => { const v = r[k]; if (v == null) return ''; return (j === 1 || j === 2) ? serialToDate(v) : (v instanceof Date ? serialToDate(v) : v); }));
+    (days[d] = days[d] || {})[id] = JSON.stringify(arr);
+  }
+  return days;
+}
+if (typeof module !== 'undefined') module.exports = { parseRows, buildModel, sizeAlerts, rowsFromDoc, rowsToDays, PROF_KEYS };
+</script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = n => '$' + (+n).toFixed(2);
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtDate = d => { if(!d) return '—'; const [y,m,dd]=d.split('-'); return `${+dd} ${MON[+m-1]} ${y}`; };
+const fmtShort = d => { if(!d) return '—'; const [y,m,dd]=d.split('-'); return `${+dd} ${MON[+m-1]}`; };
+
+let db = null, auth = null;
+let CLOUD = {};                  // date -> stored day document
+let state = { lines:{}, weights:{} };
+let model = null, selected = null;
+
+// ---------- load everything from Firebase ----------
+async function loadCloud(){
+  const snap = await db.collection(PROF_COL).get();
+  CLOUD = {}; snap.docs.forEach(d => { CLOUD[d.id] = d.data(); });
+  const rows = Object.values(CLOUD).flatMap(rowsFromDoc);
+  state.lines = {};
+  for (const l of (parseRows(rows) || [])) state.lines[l.k] = l;
+  const w = await db.collection(META_COL).doc('weights').get();
+  try { state.weights = w.exists ? JSON.parse(w.data().json || '{}') : {}; } catch(e){ state.weights = {}; }
+}
+async function refresh(msg){
+  $('#status').innerHTML = '<span class="muted">Loading profiles…</span>';
+  try { await loadCloud(); rebuild(); if (msg) flash(msg); }
+  catch(e){ $('#status').innerHTML = `<span class="pill warn">Could not load profiles (${esc(e.code || e.message)}). Check that the profile Firestore rules are published.</span>`; }
+}
+
+// ---------- backfill: old Vrich exports, saved online (orders already stored are kept as they are) ----------
+async function readFile(f){
+  if(/\.(tsv|txt|csv)$/i.test(f.name)){ const t=await f.text(); return { weights: parseWeightsText(t) }; }
+  const wb = XLSX.read(await f.arrayBuffer(),{type:'array'});
+  const ws = wb.Sheets['Sheet1'] || wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws,{defval:null});
+  if (rows.length && 'Order No.' in rows[0] && 'Product Code' in rows[0]) return { rows };
+  return { weights: parseWeightRows(XLSX.utils.sheet_to_json(ws,{header:1,defval:''})) };
+}
+function parseWeightsText(t){
+  const rows=String(t||'').split(/\r?\n/).map(l=> l.includes('\t') ? l.split('\t') : l.split(','));
+  return parseWeightRows(rows);
+}
+async function saveWeights(w){ await db.collection(META_COL).doc('weights').set({ json: JSON.stringify(w), at: new Date().toISOString() }); state.weights = w; }
+async function addFiles(list){
+  const files=[...list]; if(!files.length) return;
+  let added=0, kept=0, bad=[], wts=null;
+  flash('Reading files…');
+  try {
+    for(const f of files){
+      let res; try { res = await readFile(f); } catch(e){ bad.push(f.name); continue; }
+      if(res.weights){ wts = res.weights; continue; }
+      if(!res.rows){ bad.push(f.name); continue; }
+      const days = rowsToDays(res.rows);
+      for (const [d, orders] of Object.entries(days)){
+        const have = (CLOUD[d] && CLOUD[d].o) || {}, fresh = {};
+        for (const [id, txt] of Object.entries(orders)) { if (have[id]) kept++; else { fresh[id] = txt; added++; } }
+        if (!Object.keys(fresh).length) continue;
+        const data = { d, v:1, keys:PROF_KEYS, at:new Date().toISOString(), by:'profiler backfill', o:fresh };
+        await db.collection(PROF_COL).doc(d).set(data, { merge:true });
+        CLOUD[d] = Object.assign({}, CLOUD[d] || {}, { o: Object.assign({}, have, fresh) });
+      }
+    }
+    if (wts) await saveWeights(wts);
+  } catch(e){ flash('Not saved: ' + (e.code || e.message), true); return; }
+  await refresh();
+  flash(`${added} order${added===1?'':'s'} added` + (kept ? `, ${kept} already saved` : '') + (wts ? ', weights saved' : '') + (bad.length ? `. Not read: ${bad.join(', ')}` : '.'), !!bad.length);
+}
+let flashT; function flash(msg,warn){ const el=$('#flash'); if(!el) return; el.textContent=msg; el.className='pill '+(warn?'warn':'ok'); el.hidden=false; clearTimeout(flashT); flashT=setTimeout(()=>el.hidden=true,8000); }
+
+$('#btnLoad').onclick=()=>$('#file').click();
+$('#btnReload').onclick=()=>refresh('Reloaded.');
+$('#file').onchange=e=>{ addFiles(e.target.files); e.target.value=''; };
+['dragenter','dragover'].forEach(t=>document.addEventListener(t,e=>{e.preventDefault(); if(!$('#app').hidden) $('#drop').classList.add('over');}));
+['dragleave','drop'].forEach(t=>document.addEventListener(t,e=>{e.preventDefault(); if(t==='drop'||!e.relatedTarget) $('#drop').classList.remove('over');}));
+document.addEventListener('drop',e=>{ if(!$('#app').hidden && e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files); });
+
+// ---------- Live Log weights ----------
+function renderWrow(){
+  const n=Object.keys(state.weights||{}).length, codes=new Set(Object.keys(state.weights||{}).map(k=>k.split('|')[0])).size;
+  $('#wrow').innerHTML = n
+    ? `<span class="pill ok">Live Log weights: ${codes} codes, ${n} sizes</span><button id="wOpen">Update weights</button>`
+    : `<span class="pill warn">Live Log weights not added. Using the default size guide</span><button id="wOpen">Paste Live Log weights</button>`;
+  $('#wOpen').onclick=()=>{ $('#wpanel').hidden=false; $('#wBox').focus(); };
+}
+$('#wCancel').onclick=()=>{ $('#wpanel').hidden=true; $('#wMsg').textContent=''; };
+$('#wSave').onclick=async()=>{
+  const w=parseWeightsText($('#wBox').value);
+  if(!w){ $('#wMsg').textContent='No weights found. Each row needs Code, Size and Weight, for example: E369, L, 58-68.'; return; }
+  try { await saveWeights(w); } catch(e){ $('#wMsg').textContent='Not saved: '+(e.code||e.message); return; }
+  $('#wBox').value=''; $('#wpanel').hidden=true; $('#wMsg').textContent=''; rebuild();
+  flash(`Saved weights for ${Object.keys(w).length} code sizes.`);
+};
+
+// ---------- render ----------
+function rebuild(){
+  WEIGHTS = state.weights || {};
+  model = buildModel(state.lines);
+  renderWrow();
+  const custs=Object.values(model.custs).filter(c=>c.orderCount>0);
+  const dates=[...new Set(model.orders.map(o=>o.date))].filter(Boolean).sort();
+  const paid=model.orders.filter(o=>o.paid>0).length;
+  const withPhone=custs.filter(c=>c.phone).length;
+  const lastAt=Object.values(CLOUD).map(d=>d.at||'').sort().pop();
+  $('#status').innerHTML = (dates.length
+      ? `<span>${fmtShort(dates[0])} – ${fmtDate(dates[dates.length-1])}</span>`
+      : `<span class="pill warn">No orders yet. Upload today's Vrich order file on VHM Scan, or add old exports here</span>`) +
+    `<span><b class="mono">${paid}</b> paid orders</span><span class="muted">${model.orders.length-paid} unpaid left out</span><span><b class="mono">${custs.length}</b> customers</span><span class="muted">${custs.length?Math.round(withPhone/custs.length*100):0}% with phone</span>` +
+    (lastAt ? `<span class="muted">last update ${esc(String(lastAt).slice(0,16).replace('T',' '))}</span>` : '') + `<span class="pill" id="flash" hidden></span>`;
+  const sel=$('#aDate'); const cur=sel.value; sel.innerHTML=dates.slice().reverse().map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('');
+  if(dates.includes(cur)) sel.value=cur;
+  $('#nTop').textContent=custs.filter(c=>c.orderCount>1).length;
+  renderResults(); renderAlerts(); renderTop();
+  if(!selected || !model.custs[selected]) selected = custs.slice().sort((a,b)=>b.spend-a.spend)[0]?.key || null;
+  renderProfile();
+}
+
+function matches(q){
+  const custs=Object.values(model.custs).filter(c=>c.orderCount>0);
+  const qq=q.trim().toLowerCase(); const qd=qq.replace(/\D/g,'');
+  let list=custs;
+  if(qq){ list=custs.filter(c=> (qd.length>=3 && c.phone && (c.phone.includes(qd)||c.phone.includes(qd.replace(/^855/,'0')))) ||
+    Object.keys(c.names).some(n=>n.toLowerCase().includes(qq)) || (c.cname||'').toLowerCase().includes(qq)); }
+  return list.sort((a,b)=> (b.last||'').localeCompare(a.last||'') || b.spend-a.spend).slice(0,60);
+}
+function renderResults(){
+  const list=matches($('#q').value);
+  $('#results').innerHTML = list.length ? list.map(c=>`<button class="res" data-k="${esc(c.key)}" aria-current="${c.key===selected}">
+    <span class="nm">${esc(c.name)}</span><span class="mono" style="font-size:13px">${money(c.spend)}</span>
+    <span class="sub"><span class="mono">${esc(c.phone||'no phone')}</span> · ${c.orderCount} order${c.orderCount>1?'s':''} · last ${fmtShort(c.last)}</span></button>`).join('')
+    : `<div class="empty" style="border:0">${$('#q').value ? `No customer matches “${esc($('#q').value)}”. Try the last 4 digits of the phone.` : 'No paid customers yet.'}</div>`;
+}
+$('#q').addEventListener('input',renderResults);
+$('#results').addEventListener('click',e=>{ const b=e.target.closest('.res'); if(!b) return; selected=b.dataset.k; renderResults(); renderProfile(); if(innerWidth<820) $('#profile').scrollIntoView({behavior:'smooth',block:'start'}); });
+
+function tape(u){
+  if(!u) return '';
+  let scale;
+  if(u.kind==='letter'){ const lo=Math.min(1,...u.dist.map(d=>d.rank)), hi=Math.max(6,...u.dist.map(d=>d.rank)); scale=LETTER.slice(lo,hi+1).map((l,i)=>({label:l,rank:lo+i})); }
+  else { const rs=u.dist.map(d=>d.rank); const lo=Math.min(...rs)-2, hi=Math.max(...rs)+2; scale=[]; for(let r=lo;r<=hi;r++) scale.push({label:String(r),rank:r}); }
+  const max=Math.max(...u.dist.map(d=>d.qty));
+  return `<div class="tapebar" aria-label="Sizes bought">${scale.map(s=>{ const d=u.dist.find(x=>x.rank===s.rank);
+    return `<span class="${d?'has':''} ${s.rank===u.rank?'usual':''}" title="${d?d.qty+' bought':'none'}">${s.label}${d?`<i style="transform:scaleX(${(d.qty/max).toFixed(2)})"></i>`:''}</span>`; }).join('')}</div>`;
+}
+function fitBox(title,u,unitWord){
+  if(!u) return `<div class="fit none"><span class="lbl">${title}</span><div class="big"><b>No ${unitWord} bought yet</b></div></div>`;
+  const spread = u.dist.length>1 && (u.dist[u.dist.length-1].rank - u.dist[0].rank)>=2;
+  return `<div class="fit"><span class="lbl">${title}</span>
+    <div class="big"><b>${esc(u.label)}</b><span class="muted">${u.count} of ${u.total} item${u.total>1?'s':''}</span></div>
+    ${tape(u)}
+    ${spread?`<span class="pill warn" style="align-self:flex-start">Buys several sizes. May be buying for others</span>`:''}</div>`;
+}
+function weightBox(c){
+  const w=c.w;
+  if(!w && !c.kg) return `<div class="fit none"><span class="lbl">Weight</span><div class="big"><b>No weight guide for these items</b></div><span class="note">Add these codes in Live Log, then paste the weights here.</span></div>`;
+  const lo=40, hi=110, x=v=>((Math.min(Math.max(v,lo),hi)-lo)/(hi-lo)*100).toFixed(1);
+  let bar='';
+  if(w){
+    const rows=w.ranges.slice(0,8);
+    bar=`<div class="kgscale" aria-hidden="true">${rows.map((r,i)=>`<span class="r ${r.src==='default'?'def':''}" style="left:${x(r.lo)}%;width:${(x(r.hi)-x(r.lo))||1}%;top:${3+i*2.4}px"></span>`).join('')}
+      <span class="est" style="left:${x(w.lo)}%;width:${Math.max(x(w.hi)-x(w.lo),1.2)}%"></span>
+      ${c.kg?`<span class="me" style="left:${x(c.kg)}%" title="Customer said ${c.kg} kg"></span>`:''}
+      ${[50,60,70,80,90,100].map(t=>`<span class="tk" style="left:${x(t)}%">${t}</span>`).join('')}</div>`;
+  }
+  const big = c.kg ? `${c.kg} kg` : (w.lo===w.hi?`${w.lo} kg`:`${w.lo}–${w.hi} kg`);
+  const src = [];
+  if(c.kg) src.push('the customer wrote it in a comment');
+  if(w){ src.push(`${w.total} item${w.total>1?'s':''}: ${w.fromLog} from Live Log${w.fromDefault?`, ${w.fromDefault} from the default size guide`:''}`); }
+  const split = w && w.total>=3 && w.agree < w.total*0.6;
+  const fits = c.kg && w ? (c.kg>=w.lo-3 && c.kg<=w.hi+3) : null;
+  return `<div class="fit"><span class="lbl">Weight ${c.kg?'':'(estimate)'}</span>
+    <div class="big"><b>${big}</b>${w&&c.kg?`<span class="muted">items say ${w.lo}–${w.hi}</span>`:''}</div>
+    ${bar}
+    <span class="note">From ${src.join('. ')}.</span>
+    ${split?`<span class="pill warn" style="align-self:flex-start">Items don't agree. Only ${w.agree} of ${w.total} fit this band</span>`:''}
+    ${fits===false?`<span class="pill warn" style="align-self:flex-start">Stated weight is outside what the items suggest</span>`:''}</div>`;
+}
+function renderProfile(){
+  const c=model.custs[selected]; const el=$('#profile');
+  if(!c){ el.innerHTML=`<div class="empty">Choose a customer on the left.</div>`; return; }
+  const li=c.lastItem;
+  const orders=c.allOrders.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  el.innerHTML=`<article class="card">
+    <div class="who"><div>
+      <h2>${esc(c.name)}</h2>
+      <div class="idline">${c.phone?`<span class="mono">${esc(c.phone)}</span><button class="copy" data-copy="${esc(c.phone)}">Copy</button>`:'<span class="pill warn">No phone on file</span>'}
+      ${c.otherNames.length?`<span class="muted">also: ${c.otherNames.map(esc).join(', ')}</span>`:''}</div>
+      ${c.addr?`<div class="muted" style="font-size:13px;margin-top:4px">${esc(c.cname?c.cname+' · ':'')}${esc(c.addr)}</div>`:''}
+    </div>
+    ${li?`<div style="text-align:right"><div class="lbl">Last item</div><div><b class="mono">${esc(li.code)}</b> ${esc(li.color)} <b>${esc(li.size?li.size.label:'')}</b></div><div class="muted" style="font-size:13px">${fmtDate(li.date)}</div></div>`:''}
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">Total spend</span><b>${money(c.spend)}</b></div>
+      <div class="stat"><span class="lbl">Orders</span><b>${c.orderCount}</b></div>
+      <div class="stat"><span class="lbl">Items</span><b>${c.items}</b></div>
+      <div class="stat"><span class="lbl">Customer since</span><b style="font-size:16px">${fmtShort(c.first)}</b></div>
+    </div>
+    <div class="sect"><span class="lbl">Usual fit</span>
+      <div class="fits">${fitBox('Tops',c.top,'tops')}${fitBox('Bottoms',c.bottom,'bottoms')}${c.shoe?fitBox('Shoes',c.shoe,'shoes'):''}${weightBox(c)}</div>
+      <div class="later">
+        <span class="pill">Height: not in Live Log yet</span>
+        <span class="pill">Chest / length: needs size charts in VHM Inventory</span>
+      </div>
+    </div>
+    <div class="sect"><span class="lbl">Order history</span>
+      <div class="tbl"><table><thead><tr><th>Date</th><th>Order</th><th>Code</th><th>Item</th><th class="num">Qty</th><th class="num">Price</th></tr></thead><tbody>
+      ${orders.flatMap(o=>o.lines.map(l=>`<tr class="${o.paid>0?'':'skip'}" title="${o.paid>0?'':'Not paid. Not counted'}"><td>${fmtShort(o.date)}</td><td class="mono">${esc(o.order)}</td><td class="mono">${esc(l.code)}</td><td>${esc(l.desc)}${l.kg?` <span class="pill ok">${l.kg} kg</span>`:''}</td><td class="num">${l.qty}</td><td class="num">${(+l.price).toFixed(2)}</td></tr>`)).join('')}
+      </tbody></table></div>
+    </div>
+  </article>`;
+}
+document.addEventListener('click',async e=>{ const b=e.target.closest('[data-copy]'); if(!b) return;
+  try{ await navigator.clipboard.writeText(b.dataset.copy); b.textContent='Copied'; }catch(err){ b.textContent=b.dataset.copy; } setTimeout(()=>b.textContent='Copy',1500); });
+
+function renderAlerts(){
+  const d=$('#aDate').value; const list=d?sizeAlerts(model,d):[];
+  $('#nAlerts').textContent=list.length||'';
+  const word=(diff,kind)=>{ const n=Math.abs(diff); const unit=kind==='letter'?(n===1?'size':'sizes'):(n===1?'inch':'inches'); return `${n} ${unit} ${diff>0?'bigger':'smaller'}`; };
+  $('#alerts').innerHTML = list.length ? list.map(a=>`<div class="alert">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>${esc(a.cust.name)}</b><span class="mono muted" style="font-size:12.5px">Order ${esc(a.order.order)}</span></div>
+    <div class="jump"><span class="muted">${a.cat==='top'?'Top':'Bottom'}</span><b>${esc(a.usual.label)}</b><span>→</span><b style="color:var(--warn)">${esc(a.line.size.label)}</b></div>
+    <div style="font-size:13.5px"><span class="mono">${esc(a.line.code)}</span> ${esc(a.line.desc)}. That is ${word(a.diff,a.usual.kind)} than usual (${a.usual.count} of ${a.usual.total} earlier ${a.cat==='top'?'tops':'bottoms'} were ${esc(a.usual.label)}).</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${a.cust.phone?`<span class="mono" style="font-size:13px">${esc(a.cust.phone)}</span><button class="copy" data-copy="${esc(a.cust.phone)}">Copy</button>`:''}<button class="copy" data-open="${esc(a.cust.key)}">Open profile</button></div>
+  </div>`).join('') : `<div class="empty">${d?`No size alerts for ${fmtDate(d)}. Every top and bottom is within 1 size of the customer's usual size, or the customer is new.`:'No orders yet.'}</div>`;
+}
+$('#aDate').onchange=renderAlerts;
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-open]'); if(!b) return; selected=b.dataset.open; show('look'); $('#q').value=''; renderResults(); renderProfile(); });
+
+function topList(){
+  let list=Object.values(model.custs).filter(c=>c.orderCount>0);
+  if($('#tFilter').value==='repeat') list=list.filter(c=>c.orderCount>1);
+  const k=$('#tSort').value;
+  return list.sort((a,b)=> k==='last' ? (b.last||'').localeCompare(a.last||'') : (b[k]-a[k]) || b.spend-a.spend).slice(0,100);
+}
+function wText(c,plain){ if(c.kg) return c.kg+(plain?'':' kg'); if(!c.w) return plain?'':'—'; return (c.w.lo===c.w.hi?c.w.lo:c.w.lo+'–'+c.w.hi)+(plain?'':(c.w.fromLog?'':' *')); }
+function renderTop(){
+  const list=topList();
+  $('#topTbl').innerHTML=`<thead><tr><th class="num">#</th><th>Customer</th><th>Phone</th><th class="num">Orders</th><th class="num">Items</th><th class="num">Spend</th><th>Top</th><th>Bottom</th><th>Weight</th><th>Last order</th></tr></thead><tbody>${
+    list.map((c,i)=>`<tr class="click" data-open="${esc(c.key)}"><td class="num">${i+1}</td><td>${esc(c.name)}</td><td class="mono">${esc(c.phone||'—')}</td><td class="num">${c.orderCount}</td><td class="num">${c.items}</td><td class="num">${money(c.spend)}</td><td>${esc(c.top?.label||'—')}</td><td>${esc(c.bottom?.label||'—')}</td><td class="mono">${wText(c)}</td><td>${fmtShort(c.last)}</td></tr>`).join('')}</tbody>`;
+}
+$('#tFilter').onchange=renderTop; $('#tSort').onchange=renderTop;
+$('#btnCopy').onclick=async()=>{
+  const rows=[['Rank','Customer','Phone','Orders','Items','Spend','Usual top','Usual bottom','Weight (kg)','First order','Last order']].concat(
+    topList().map((c,i)=>[i+1,c.name,c.phone||'',c.orderCount,c.items,c.spend,c.top?.label||'',c.bottom?.label||'',wText(c,true),c.first,c.last]));
+  const tsv=rows.map(r=>r.join('\t')).join('\n');
+  try{ await navigator.clipboard.writeText(tsv); $('#copyMsg').textContent=`Copied ${rows.length-1} rows. Paste into Google Sheets or Excel.`; }
+  catch(e){ $('#copyMsg').textContent='Copy was blocked here. Select the table and copy it instead.'; }
+};
+
+function show(v){ for(const t of document.querySelectorAll('.tab')) t.setAttribute('aria-selected', t.dataset.v===v);
+  for(const s of ['look','alerts','top']) $('#v-'+s).hidden = s!==v; try{ localStorage.setItem('vhm-prof-tab',v); }catch(e){} }
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>show(t.dataset.v));
+
+// ---------- sign-in (owner Google account; Firestore rules decide access) ----------
+(function boot(){
+  if (!window.firebase){ $('#signMsg').textContent = 'Firebase could not load (no internet?). Reload the page.'; return; }
+  const app = firebase.initializeApp(FIREBASE, 'vhm-profiler');
+  auth = app.auth(); db = app.firestore();
+  $('#btnIn').disabled = false; $('#signMsg').textContent = '';
+  $('#btnIn').onclick = async () => {
+    $('#btnIn').disabled = true; $('#signMsg').textContent = 'Opening Google sign-in…';
+    try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+    catch(e){ $('#signMsg').textContent = `Sign-in failed (${e.code || 'unknown error'}).`; }
+    finally { $('#btnIn').disabled = false; }
+  };
+  $('#btnOut').onclick = () => auth.signOut();
+  auth.onAuthStateChanged(async user => {
+    $('#app').hidden = true; $('#actions').hidden = true; $('#signin').hidden = false;
+    state = { lines:{}, weights:{} }; CLOUD = {};
+    if (!user){ $('#status').innerHTML = ''; $('#signMsg').textContent = ''; return; }
+    $('#signMsg').textContent = 'Checking access…';
+    try { await db.collection('sv2_profit_owner').doc('access').get(); }
+    catch(e){ $('#signMsg').textContent = 'This account cannot open customer profiles, or the Firestore rules still need to be published.'; return; }
+    $('#signin').hidden = true; $('#app').hidden = false; $('#actions').hidden = false;
+    try{ const t=localStorage.getItem('vhm-prof-tab'); if(t) show(t); }catch(e){}
+    await refresh();
+  });
+})();
+</script>
+</body>
+</html>

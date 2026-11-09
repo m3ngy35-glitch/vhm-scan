@@ -335,6 +335,7 @@ html[data-lang=km] .top h1 .bl>.km{font-size:inherit;font-weight:inherit;color:i
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script src="profit-core.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -652,7 +653,8 @@ const DEF = {
     { f: 'name', req: true, label: 'Name', alias: ['name', 'product name', 'item name', 'title', 'ឈ្មោះ'] },
     { f: 'attrs', req: true, label: 'Attributes', alias: ['attributes', 'attribute', 'variant', 'options'] },
     { f: 'qty', alias: ['stock qty.', 'stock qty', 'qty', 'quantity'] },
-    { f: 'price', alias: PRICE_ALIAS }
+    { f: 'price', alias: PRICE_ALIAS },
+    { f: 'cost', alias: ['supply price'] }
   ],
   vrich: [
     { f: 'code', req: true, label: 'Sale Code', alias: ['sale code', 'product code', 'code'] },
@@ -672,6 +674,10 @@ const DEF = {
     { f: 'fb', alias: ['facebook name', 'fb_name'] },
     { f: 'user', alias: ['customer name', 'username'] },
     { f: 'ship', alias: ['courier'] },
+    { f: 'amount', alias: ['amount'] },
+    { f: 'discount', alias: ['discount'] },
+    { f: 'delivery', alias: ['delivery fee'] },
+    { f: 'total', alias: ['total'] },
     { f: 'date', req: true, label: 'Date', alias: ['date'] }
   ]
 };
@@ -686,21 +692,22 @@ function analyzePok(rows) {
   for (let i = h.row + 1; i < rows.length; i++) {
     const r = rows[i]; if (!r) continue;
     const code = g(r, 'code'); if (!code) continue;            // blank rows and the totals row
-    const it = { row: i + 1, code, bar: g(r, 'barcode'), name: g(r, 'name'), attrs: g(r, 'attrs'), qty: num(g(r, 'qty')), price: V.price(g(r, 'price')) };
+    const it = { row: i + 1, code, bar: g(r, 'barcode'), name: g(r, 'name'), attrs: g(r, 'attrs'), qty: num(g(r, 'qty')), price: V.price(g(r, 'price')), costCents: VHMProfit.cents(g(r, 'cost')) };
     if (!it.name) { excluded.push([it, 'No name — the first word of the name is the sale code']); continue; }
     if (isSci(it.code)) { excluded.push([it, 'Code looks like a number Excel rounded (' + it.code + ')']); continue; }
     if (it.bar && isSci(it.bar)) { excluded.push([it, 'Barcode looks like a number Excel rounded (' + it.bar + ')']); continue; }
     items.push(it);
   }
   const groups = new Map(); items.forEach(it => { const k = nz(it.code); (groups.get(k) || groups.set(k, []).get(k)).push(it); });
-  const recs = []; let merged = 0;
+  const recs = [], costs = []; let merged = 0;
   groups.forEach(a => {
     const sig = x => [x.code, x.bar, x.name, x.attrs, x.price].join('\u0001');
     if (a.length > 1 && !a.every(x => sig(x) === sig(a[0]))) { a.forEach(x => excluded.push([x, 'Same code on rows ' + a.map(y => y.row).join(', ') + ' with different details'])); return; }
     merged += a.length - 1; const x = a[0]; recs.push([x.code, x.bar, x.name, x.attrs, x.qty == null ? null : x.qty, x.price == null ? null : x.price]);
+    if (m.cost != null) costs.push({ sku: x.code, costCents: a.every(item => item.costCents === x.costCents) ? x.costCents : null });
   });
   recs.sort((a, b) => nz(a[0]) < nz(b[0]) ? -1 : nz(a[0]) > nz(b[0]) ? 1 : 0);
-  return { recs, excluded, merged, rowsRead: rows.length - h.row - 1, priceCol: m.price != null ? clean(cellTxt(rows[h.row][m.price])) : '' };
+  return { recs, costs, hasCostColumn: m.cost != null, excluded, merged, rowsRead: rows.length - h.row - 1, priceCol: m.price != null ? clean(cellTxt(rows[h.row][m.price])) : '' };
 }
 // barcode problems that stay in the catalog (the scanner refuses to guess on them)
 function pokWarnings(recs) {
@@ -752,15 +759,71 @@ function analyzeOrders(rows) {
     const d = ymd(r[m.date]);
     const o = orders[id] = orders[id] || { d, fb: g(r, 'fb'), user: g(r, 'user'), ship: g(r, 'ship'), items: [] };
     if (!o.d && d) o.d = d;
+    if (m.amount != null && m.discount != null) {
+      const amount = VHMProfit.cents(g(r, 'amount')), discount = VHMProfit.cents(g(r, 'discount'));
+      if (amount != null && discount != null) {
+        const deliveryFee = VHMProfit.cents(g(r, 'delivery')), customerTotal = VHMProfit.cents(g(r, 'total'));
+        if (!o.finance) o.finance = { amount, discount, deliveryFee, customerTotal };
+        else if (o.finance.amount !== amount || o.finance.discount !== discount) o.finance.conflict = true;
+      }
+    }
     const qty = Math.max(1, parseInt(g(r, 'qty'), 10) || 1), it = { code, stock: g(r, 'stock'), desc: g(r, 'desc'), qty };
     const up = V.unitPrice(g(r, 'price'), qty); if (up != null) { it.price = up; prices++; }     // Vrich Price = line total → per piece
+    it.lineCents = VHMProfit.cents(g(r, 'price'));
     o.items.push(it);
     lines++;
   }
   const ids = Object.keys(orders), noDate = ids.filter(id => !orders[id].d);
   noDate.forEach(id => { orders[id].d = V.today(); });
-  ids.forEach(id => { orders[id].sig = V.orderSig(orders[id]); orders[id].psig = V.priceSig(orders[id]); });
+  ids.forEach(id => {
+    const order = orders[id];
+    if (order.finance && order.finance.conflict) order.finance = null;
+    order.sig = V.orderSig(order);
+    order.psig = V.quick(JSON.stringify([V.priceSig(order), order.finance || null, order.items.map(item => item.lineCents)]));
+  });
   return { orders, lines, bad, noDate: noDate.length, prices, priceCol: m.price != null ? clean(cellTxt(rows[h.row][m.price])) : '' };
+}
+
+/* ---------- 👤 customer profiles (VHM Customer Profiler) ----------
+ * The same Vrich order export also feeds the profiler: every order's rows are kept, in the columns the profiler reads,
+ * in prof_days/<order date> = { d, v, keys, at, o: { <order no>: JSON rows } }. One document per day, merged, so re-uploading a
+ * day updates its orders (e.g. Transferred after a late payment) and never duplicates. Not touched by the 35-day clean-up.
+ * Only the owner Google account can read it (Firestore rules); the manager account can only write. */
+const PROF_COL = 'prof_days';
+const PROF_KEYS = ['No.', 'Date', 'Date/Time', 'Facebook Name', 'Customer Name', 'Address', 'Telephone', 'Amount', 'Total', 'Transferred', 'Printed', 'Product Code', 'Description', 'Quantity', 'Price', 'Comment'];
+const PROF_NEED = ['Facebook Name', 'Telephone', 'Address', 'Amount', 'Transferred', 'Product Code', 'Description'];
+const profCell = v => v instanceof Date ? v.toISOString().slice(0, 19).replace('T', ' ') : v == null ? '' : v;
+function profDate(v) {
+  if (typeof v === 'number' && v > 20000 && v < 80000) { const d = XLSX.SSF.parse_date_code(v), p = n => String(n).padStart(2, '0'); return `${d.y}-${p(d.m)}-${p(d.d)} ${p(d.H)}:${p(d.M)}:${p(Math.floor(d.S))}`; }
+  return profCell(v);
+}
+function profOrders(rows) {
+  const h = detectHeader(rows, DEF.ord); if (!h.ok) return null;
+  const head = (rows[h.row] || []).map(c => clean(cellTxt(c))), oi = head.indexOf('Order No.');
+  const col = PROF_KEYS.map(k => head.indexOf(k));
+  if (oi < 0) return null;
+  const orders = {};
+  for (let i = h.row + 1; i < rows.length; i++) {
+    const r = rows[i]; if (!r) continue;
+    const id = clean(cellTxt(r[oi])); if (!id) continue;
+    (orders[id] = orders[id] || []).push(col.map((j, k) => j < 0 ? '' : (k === 1 || k === 2) ? profDate(r[j]) : profCell(r[j])));
+  }
+  const tr = PROF_KEYS.indexOf('Transferred');
+  return { orders, missing: PROF_NEED.filter(k => col[PROF_KEYS.indexOf(k)] < 0), paid: Object.values(orders).filter(rs => rs.some(r => +r[tr] > 0)).length };
+}
+// save (or with del, remove) these orders' profile rows; grouped by the same order date Scan uses
+async function profSave(S, ids, del) {
+  const byDate = {};
+  ids.forEach(id => { const o = S.A.orders[id], rows = S.P && S.P.orders[id]; if (!o || (!rows && !del)) return; (byDate[o.d] = byDate[o.d] || {})[id] = del ? store.delField() : JSON.stringify(rows); });
+  const ops = Object.keys(byDate).map(d => ({ op: 'set', col: PROF_COL, id: d, merge: true, data: del ? { o: byDate[d], at: V.localNow() } : { d, v: 1, keys: PROF_KEYS, at: V.localNow(), by: ST.user.email, o: byDate[d] } }));
+  if (ops.length) await store.batch(ops);
+  return Object.values(byDate).reduce((n, x) => n + Object.keys(x).length, 0);
+}
+function profBox(P) {
+  if (!P) return msg('warn', 'Customer profiles: could not read this file', 'ប្រវត្តិអតិថិជន៖ អានឯកសារនេះមិនបាន', '');
+  if (P.missing.length) return msg('warn', '👤 Customer profiles: some columns are missing', '👤 ប្រវត្តិអតិថិជន៖ ខ្វះជួរឈរ', bi(`Not in this file: <b>${esc(P.missing.join(', '))}</b>. Profiles will be incomplete — use Vrich's full order export.`, `មិនមានក្នុងឯកសារ៖ <b>${esc(P.missing.join(', '))}</b>។ សូមប្រើ Export ការកុម្ម៉ង់ពេញពី Vrich។`));
+  const n = Object.keys(P.orders).length;
+  return box('ok', bi(`👤 Customer profiles: ${fmt(n)} order(s) will be saved for the profiler (${fmt(P.paid)} paid, ${fmt(n - P.paid)} not paid yet).`, `👤 ប្រវត្តិអតិថិជន៖ នឹងរក្សាទុក ${fmt(n)} ការកុម្ម៉ង់ (បានបង់ ${fmt(P.paid)} · មិនទាន់បង់ ${fmt(n - P.paid)})។`));
 }
 
 /* ---------- catalogs online ---------- */
@@ -778,6 +841,10 @@ async function publishCatalog(kind, recs, file, extraMeta) {
   const parts = V.split(V.pack(obj));
   for (let i = 0; i < parts.length; i++) await store.set(COL.cat, V.partId(kind, ver, i), { ver, i, n: parts.length, data: store.blob(parts[i]) });
   const info = Object.assign({ ver, fp: obj.fp, count: obj.count, parts: parts.length, bytes: parts.reduce((a, p) => a + p.length, 0), at: obj.at, by: obj.by, filename: file }, extraMeta.info || {});
+  if (extraMeta.privateCosts) {
+    try { await store.batch(VHMProfit.snapshotOperations(ver, extraMeta.privateCosts.parent, extraMeta.privateCosts.rows)); }
+    catch (error) { throw new Error('Owner costs could not be saved. The previous catalog is still active. Check the cost upload permission and retry.'); }
+  }
   const upd = { [kind]: info }; if (extraMeta.fresh) upd.fresh = extraMeta.fresh;
   await store.set(COL.cat, 'meta', upd, true);           // phones switch to the new version only now, when every part is saved
   if (prev && prev.ver && prev.ver !== ver) { const ops = []; for (let i = 0; i < (prev.parts || 0); i++) ops.push({ op: 'del', col: COL.cat, id: V.partId(kind, prev.ver, i) }); try { await store.batch(ops); } catch (e) {} }
@@ -1014,7 +1081,7 @@ function drawPokSummary() {
   if (D.priced.length) h += `<details><summary>${bl(D.priced.length + ' price change(s)', D.priced.length + ' ប្តូរតម្លៃ')}</summary>${tbl([['Code', 'កូដ'], ['Item', 'ទំនិញ'], ['Was', 'មុន'], ['Now', 'ឥឡូវ']], D.priced.slice(0, 300).map(([p, r]) => [r[0], r[2] + ' ' + r[3], V.money(V.price(p[5])), V.money(V.price(r[5]))]))}</details>`;
   if (shrink) h += msg('bad', 'Blocked — this file looks incomplete', 'មិនអនុញ្ញាត — ឯកសារនេះហាក់ដូចជាមិនពេញលេញ', bi(`The list online has ${fmt(pc)} items and this file only ${fmt(n)} (more than 50% fewer). Export the full list again.`, `បញ្ជីនៅលើប្រព័ន្ធមាន ${fmt(pc)} មុខ តែឯកសារនេះមានតែ ${fmt(n)} មុខ (តិចជាង 50%)។ សូម Export បញ្ជីទាំងអស់ម្តងទៀត។`));
   else if (D.risky.length) h += msg('bad', `${D.risky.length} barcode(s) would now mean a different product`, `បាកូដ ${D.risky.length} នឹងក្លាយជាទំនិញផ្សេង`, bi('Check each one, then tick the box to allow the upload.', 'សូមពិនិត្យម្តងមួយៗ រួចធីកប្រអប់ខាងក្រោម ដើម្បីអាចបញ្ចូលបាន។') + tbl([['Item', 'ទំនិញ'], ['What', 'អ្វី'], ['Was', 'មុន'], ['Now', 'ឥឡូវ']], D.risky.slice(0, 200).map(x => [x.code, x.why, x.was, x.now])) + `<label class="chk"><input type="checkbox" id="pokrisk"> ${bi('I checked these; the new meaning is correct.', 'ខ្ញុំបានពិនិត្យហើយ ទំនិញថ្មីនេះត្រឹមត្រូវ។')}</label>`);
-  if (!shrink && !(partial && !D.added.length && !D.changed.length && !D.priced.length)) h += step2() + (partial ? upBtn('pokgo', 'add / update ' + fmt(D.added.length + D.changed.length + D.priced.length) + ' item(s)', 'បន្ថែម / កែ ' + fmt(D.added.length + D.changed.length + D.priced.length) + ' មុខ', D.risky.length ? ' disabled' : '') : upBtn('pokgo', fmt(n) + ' items', fmt(n) + ' មុខទំនិញ', D.risky.length ? ' disabled' : ''));
+  if (!shrink && (A.hasCostColumn || !(partial && !D.added.length && !D.changed.length && !D.priced.length))) h += step2() + (partial ? upBtn('pokgo', 'add / update ' + fmt(D.added.length + D.changed.length + D.priced.length) + ' item(s)', 'បន្ថែម / កែ ' + fmt(D.added.length + D.changed.length + D.priced.length) + ' មុខ', D.risky.length ? ' disabled' : '') : upBtn('pokgo', fmt(n) + ' items', fmt(n) + ' មុខទំនិញ', D.risky.length ? ' disabled' : ''));
   slotMsg('pok', h);
   if ($('pokrisk')) $('pokrisk').onchange = e => { $('pokgo').disabled = !e.target.checked; };
   if ($('pokgo')) $('pokgo').onclick = uploadPok;
@@ -1025,12 +1092,14 @@ async function uploadPok() {
     const fresh = D.first ? [] : [...D.added.map(r => r[0]), ...D.changed.map(x => x[1][0])].slice(0, 5000);
     const info = await publishCatalog('pok', A.recs, f.name, {
       info: { added: D.added.length, changed: D.changed.length, removed: D.removed.length, excluded: A.excluded.slice(0, 300).map(([it, why]) => it.row + '\t' + it.code + '\t' + (it.name || '') + '\t' + why) },
-      fresh: { ver: Date.now().toString(36), codes: fresh.join(' ') }
+      fresh: { ver: Date.now().toString(36), codes: fresh.join(' ') },
+      privateCosts: A.hasCostColumn ? { parent: SL.pok.partial ? SL.pok.prev.ver : null, rows: A.costs } : null
     });
     await syncDays();
     slotMsg('pok', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(
       (SL.pok.partial ? `Added ${fmt(D.added.length)}, updated ${fmt(D.changed.length + D.priced.length)} · ` : '') + `${fmt(info.count)} items online · version ${esc(info.ver)}. Phones switch to it automatically.` + (fresh.length ? ` The first scan of each of the ${fmt(fresh.length)} new/changed item(s) asks staff to confirm the item.` : ''),
       (SL.pok.partial ? `បានបន្ថែម ${fmt(D.added.length)} · បានកែ ${fmt(D.changed.length + D.priced.length)} · ` : '') + `មាន ${fmt(info.count)} មុខទំនិញនៅលើប្រព័ន្ធ។ ទូរស័ព្ទប្តូរទៅប្រើបញ្ជីថ្មីដោយស្វ័យប្រវត្តិ។` + (fresh.length ? ` ពេលស្កេនទំនិញថ្មី/បានប្តូរ ${fmt(fresh.length)} មុខលើកដំបូង បុគ្គលិកត្រូវបញ្ជាក់ទំនិញ។` : ''))));
+    if (!A.hasCostColumn) $('r-pok').insertAdjacentHTML('beforeend', '<p role="alert">Supply Price was missing. This version has no owner costs.</p>');
     drawStatus(); drawCat(); drawIssues(); autoPublishMap();
   } catch (err) { slotMsg('pok', saveFail(err)); }
 }
@@ -1076,7 +1145,8 @@ $('f-ord').onchange = async e => {
     dates.forEach(d => Object.keys(idx[d].o || {}).forEach(id => { if (!A.orders[id] && idx[d].o[id].st !== 'c') gone.push([d, id]); }));
     let pokRecs = null; try { const c = await currentCatalog('pok'); pokRecs = c && c.records; } catch (err) {}
     const R = pokRecs ? readiness(linesOf(A.orders), pokRecs) : null;
-    SL.ord = { f, A, dates, idx, nw, ch, pr, same, gone, R };
+    const P = profOrders(rows);
+    SL.ord = { f, A, dates, idx, nw, ch, pr, same, gone, R, P };
     let h = `<div class="mut">📅 ${bl('Order date(s):', 'ថ្ងៃការកុម្ម៉ង់៖')} <b>${dates.map(esc).join(', ')}</b></div><div class="sum">${cell(ids.length, 'orders\nការកុម្ម៉ង់')}${cell(A.lines, 'item lines\nជួរទំនិញ')}${cell(nw.length, 'new\nថ្មី', nw.length ? 'ok' : '')}${cell(ch.length, 'changed\nបានប្តូរ', ch.length ? 'warn' : '')}${pr.length ? cell(pr.length, 'price added / changed\nបន្ថែម / ប្តូរតម្លៃ') : ''}${cell(same.length, 'unchanged (no write)\nដូចមុន (មិនបញ្ចូលទៀត)')}</div>`;
     h += priceBox(A.priceCol, A.priceCol ? ` · ${fmt(A.prices)} of ${fmt(A.lines)} lines have a price (stored per piece = Price ÷ Quantity)` + (R && R.counts.price ? ` · <b>${fmt(R.counts.price)}</b> line(s) where no PokPok label has the order price` : '') : '', A.priceCol ? ` · ${fmt(A.prices)} ក្នុងចំណោម ${fmt(A.lines)} ជួរមានតម្លៃ (រក្សាទុកតម្លៃមួយដុំ = Price ÷ Quantity)` + (R && R.counts.price ? ` · <b>${fmt(R.counts.price)}</b> ជួរដែលគ្មានស្លាក PokPok តម្លៃដូចការកុម្ម៉ង់` : '') : '');
     if (R) h += msg(R.problems.length ? 'warn' : 'ok', `${fmt(R.counts.ok)} line(s) scan OK · ${fmt(R.problems.length)} can't scan yet`, `${fmt(R.counts.ok)} ជួរស្កេនបាន · ${fmt(R.problems.length)} ជួរមិនទាន់អាចស្កេនបាន`, bi('Checked against the PokPok list. After uploading, see <i>To fix</i> below.', 'បានធៀបនឹងបញ្ជី PokPok។ ក្រោយបញ្ចូល សូមមើលផ្នែក «ត្រូវកែ» ខាងក្រោម។'));
@@ -1085,6 +1155,7 @@ $('f-ord').onchange = async e => {
     if (A.noDate) h += msg('warn', `${A.noDate} order(s) had no readable date`, `${A.noDate} ការកុម្ម៉ង់គ្មានកាលបរិច្ឆេទអានបាន`, bi('They were filed under today.', 'ត្រូវបានដាក់ជាថ្ងៃនេះ។'));
     if (ch.length) h += `<details><summary>${bl(ch.length + ' changed order(s) — phones will ask staff to re-check them', ch.length + ' ការកុម្ម៉ង់បានប្តូរ — ទូរស័ព្ទនឹងប្រាប់បុគ្គលិកឱ្យពិនិត្យម្តងទៀត')}</summary><div class="mut">${ch.slice(0, 200).map(esc).join(', ')}${ch.length > 200 ? ' …' : ''}</div></details>`;
     if (gone.length) h += msg('warn', `${gone.length} order(s) uploaded earlier are not in this file`, `${gone.length} ការកុម្ម៉ង់ដែលបានបញ្ចូលពីមុន មិនមានក្នុងឯកសារនេះទេ`, `${bl('Dates:', 'ថ្ងៃ៖')} ${dates.map(esc).join(', ')}<label class="chk"><input type="checkbox" id="ordcancel"> ${bi('Mark them as <b>cancelled</b> (phones will say "don\'t pack"). Leave unticked if this export was filtered.', 'ដាក់ថា <b>បានលុបចោល</b> (ទូរស័ព្ទនឹងប្រាប់ថា «កុំវេចខ្ចប់»)។ កុំធីក បើឯកសារនេះ Export តែមួយផ្នែក។')}</label><div class="mut" style="margin-top:4px">${gone.slice(0, 60).map(x => esc(x[1])).join(', ')}${gone.length > 60 ? ' …' : ''}</div>`);
+    h += profBox(P);
     h += step2() + upBtn('ogo', fmt(nw.length + ch.length + pr.length) + ' order(s)', fmt(nw.length + ch.length + pr.length) + ' ការកុម្ម៉ង់');
     if (same.length) h += undoHTML(same.length, false) + `<div class="mut">${bi('Removes the orders that are online exactly as in this file (orders, daily order list and the "Orders that can\'t scan" list). Orders that were scanned keep their scan log and issues.', 'លុបការកុម្ម៉ង់ដែលដូចឯកសារនេះទាំងស្រុងចេញពីប្រព័ន្ធ។ ការកុម្ម៉ង់ដែលបានស្កេនហើយ នៅរក្សាកំណត់ត្រាស្កេនដដែល។')}</div>`;
     slotMsg('ord', h); $('ogo').onclick = uploadOrders; if ($('oundo')) $('oundo').onclick = undoOrders; pickEnable();
@@ -1100,6 +1171,7 @@ async function undoOrders() {
     S.same.forEach(id => { const d = S.A.orders[id].d; (byDate[d] = byDate[d] || {})[id] = store.delField(); });
     Object.keys(byDate).forEach(d => ops.push({ op: 'set', col: COL.idx, id: d, data: { o: byDate[d], at: V.localNow() }, merge: true }));
     await store.batch(ops);
+    try { await profSave(S, S.same, true); } catch (e) { console.warn('profiles undo', e); }
     // day lists for "Orders that can't scan"
     const rm = new Set(S.same);
     for (const d of Object.keys(byDate)) {
@@ -1120,7 +1192,7 @@ async function uploadOrders() {
     const now = V.localNow(), ops = [], idxUpd = {};
     S.dates.forEach(d => { idxUpd[d] = {}; });
     [...S.nw, ...S.ch].forEach(id => {
-      const o = S.A.orders[id], old = (S.idx[o.d].o || {})[id], doc = { d: o.d, fb: o.fb, user: o.user, ship: o.ship, items: o.items, sig: o.sig, st: 'a', at: now, rev: old ? (old.r || 1) + 1 : 1 };
+      const o = S.A.orders[id], old = (S.idx[o.d].o || {})[id], doc = { d: o.d, fb: o.fb, user: o.user, ship: o.ship, items: o.items, finance: o.finance || null, sig: o.sig, st: 'a', at: now, rev: old ? (old.r || 1) + 1 : 1 };
       if (old) doc.changedAt = now;
       ops.push({ op: 'set', col: COL.orders, id, data: doc });
       idxUpd[o.d][id] = V.idxEnc({ s: o.sig + '~' + o.psig, f: o.fb || o.user || '', n: o.items.reduce((a, i) => a + i.qty, 0), st: 'a', r: doc.rev });
@@ -1128,16 +1200,20 @@ async function uploadOrders() {
     // price only: new item list (with prices), same revision, no changedAt → no ORDER CHANGED on the phones
     (S.pr || []).forEach(id => {
       const o = S.A.orders[id], old = S.idx[o.d].o[id];
-      ops.push({ op: 'set', col: COL.orders, id, data: { items: o.items, sig: o.sig }, merge: true });
+      ops.push({ op: 'set', col: COL.orders, id, data: { items: o.items, finance: o.finance || null, sig: o.sig }, merge: true });
       idxUpd[o.d][id] = V.idxEnc(Object.assign({}, old, { s: o.sig + '~' + o.psig }));
     });
     if (cancel) S.gone.forEach(([d, id]) => { ops.push({ op: 'set', col: COL.orders, id, data: { st: 'c', changedAt: now }, merge: true }); idxUpd[d][id] = V.idxEnc(Object.assign({}, S.idx[d].o[id], { st: 'c' })); });
     S.dates.forEach(d => { if (Object.keys(idxUpd[d]).length) ops.push({ op: 'set', col: COL.idx, id: d, data: { d, at: now, o: idxUpd[d] }, merge: true }); });
     await store.batch(ops);
     await saveDays(S, cancel);
+    // 👤 customer profiles: every order in the file (also unchanged ones, so payment status stays current). Never blocks packing.
+    let profNote = '';
+    try { const n = await profSave(S, Object.keys(S.A.orders)); profNote = bi(`👤 ${fmt(n)} order(s) saved for the customer profiler.`, `👤 បានរក្សាទុក ${fmt(n)} ការកុម្ម៉ង់សម្រាប់ប្រវត្តិអតិថិជន។`); }
+    catch (e) { profNote = '<b style="color:#991b1b">' + bi('👤 Customer profiles were not saved: ' + esc(nice(e)) + ' — packing is not affected. Publish the profile Firestore rules, then upload this file again.', '👤 ប្រវត្តិអតិថិជនមិនបានរក្សាទុក៖ ' + esc(nice(e)) + ' — មិនប៉ះពាល់ការវេចខ្ចប់ទេ។') + '</b>'; }
     // every order of this file is now online exactly as in the file — the same set "choose the same file again → Undo" would remove
     S.same = Object.keys(S.A.orders);
-    slotMsg('ord', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(`${fmt(S.nw.length)} new, ${fmt(S.ch.length)} changed${cancel ? ', ' + fmt(S.gone.length) + ' cancelled' : ''}. Phones can scan them now.`, `ថ្មី ${fmt(S.nw.length)} · បានប្តូរ ${fmt(S.ch.length)}${cancel ? ' · បានលុបចោល ' + fmt(S.gone.length) : ''}។ ទូរស័ព្ទអាចស្កេនបានហើយឥឡូវនេះ។`)) + undoHTML(S.same.length, true));
+    slotMsg('ord', msg('ok', 'Upload Successful', 'បញ្ចូលបានជោគជ័យ', bi(`${fmt(S.nw.length)} new, ${fmt(S.ch.length)} changed${cancel ? ', ' + fmt(S.gone.length) + ' cancelled' : ''}. Phones can scan them now.`, `ថ្មី ${fmt(S.nw.length)} · បានប្តូរ ${fmt(S.ch.length)}${cancel ? ' · បានលុបចោល ' + fmt(S.gone.length) : ''}។ ទូរស័ព្ទអាចស្កេនបានហើយឥឡូវនេះ។`) + '<div style="margin-top:6px">' + profNote + '</div>') + undoHTML(S.same.length, true));
     $('oundo').onclick = undoOrders;
     drawStatus(); autoCleanup(); pickEnable(); updateShelves(true);      // phones get the latest shelves with the new orders
   } catch (err) { slotMsg('ord', saveFail(err)); }
