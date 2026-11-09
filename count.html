@@ -7,7 +7,7 @@
 <title>VHM Stock Count</title>
 <!-- VHM Stock Count 1.2 (9 Nov 2026) · 1.2: "Size chart" is the first sheet of the report (Stock Take layout: one block per product
      code, colours across — 5 per band — sizes down with the counted qty beside each, colour totals underneath; a red number differs from
-     the PokPok qty and its cell comment shows the PokPok qty). "🖨 Print size chart" prints the same layout. Colour/size come from the
+     the PokPok qty and its cell comment shows the PokPok qty). "🖨 / 🖼 Size chart" opens the same layout to print or 🖼 save as a picture (PNG: all codes, or one code). Colour/size come from the
      PokPok attributes ("-colour -size").
      VHM Stock Count 1.1 (2 Nov 2026) · scan PokPok labels to count stock; one scan counts for the PokPok item AND its Vrich stock code.
      1.1: the map loads by itself from VHM Scan (sv2_meta/stockmap, published by the upload page after every PokPok / Vrich upload):
@@ -145,7 +145,7 @@ document.querySelectorAll('#langsw [data-l]').forEach(b => b.onclick = () => set
 $('undo').innerHTML = bl('↩ Undo last', '↩ ដកវិញ');
 $('export').innerHTML = bl('⬇ Export report (.xlsx)', '⬇ ទាញយករបាយការណ៍ (.xlsx)');
 $('reset').innerHTML = bl('New count', 'រាប់ថ្មី');
-$('printchart').innerHTML = bl('🖨 Print size chart', '🖨 បោះពុម្ពតារាងទំហំ');
+$('printchart').innerHTML = bl('🖨 / 🖼 Size chart (print or picture)', '🖨 / 🖼 តារាងទំហំ (បោះពុម្ព ឬរូបភាព)');
 
 /* ---------- sounds ---------- */
 let actx = null;
@@ -358,13 +358,44 @@ function sizeChartSheet(blocks, staff, stamp) {
 }
 
 // the same layout as a page to print (A4 portrait; a code block never splits across two pages)
+// runs in the chart window: 🖼 = PNG via html2canvas — the whole chart (in parts of ≤ 8 codes, so a picture never gets too tall
+// for a phone) or one code. On a phone that can share files it opens the share sheet (Telegram…), otherwise it downloads.
+const SHOT_JS = String.raw`
+var STAMP = '__STAMP__', hd = document.querySelector('.hd'), lg = document.querySelector('.lg');
+function say(t) { document.getElementById('pmsg').textContent = t; }
+async function snap(nodes, name) {
+  var cap = document.createElement('div'); cap.className = 'cap';
+  nodes.forEach(function (n) { var c = n.cloneNode(true); c.querySelectorAll('.one').forEach(function (b) { b.remove(); }); cap.appendChild(c); });
+  document.body.appendChild(cap);
+  try {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    var cv = await html2canvas(cap, { scale: 2, backgroundColor: '#ffffff', logging: false });
+    var blob = await new Promise(function (r) { cv.toBlob(r, 'image/png'); });
+    return new File([blob], name, { type: 'image/png' });
+  } finally { cap.remove(); }
+}
+async function give(files) {
+  if (navigator.canShare && navigator.canShare({ files: files })) { try { await navigator.share({ files: files }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  files.forEach(function (f, i) { setTimeout(function () { var a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); }, i * 400); });
+}
+var H2C = null;
+function lib() { if (window.html2canvas) return Promise.resolve(); if (!H2C) H2C = new Promise(function (ok, no) { var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; s.onload = ok; s.onerror = function () { H2C = null; no(new Error('no internet — the picture tool did not load')); }; document.head.appendChild(s); }); return H2C; }
+lib().catch(function () {});
+async function run(fn) { say('Making the picture… · កំពុងបង្កើតរូបភាព…'); try { await lib(); } catch (e) { say(e.message); return; } try { await fn(); say('✓ Done · រួចរាល់'); } catch (e) { say('Could not make the picture: ' + (e.message || e)); } }
+document.getElementById('picall').onclick = function () { run(async function () {
+  var blks = Array.prototype.slice.call(document.querySelectorAll('.blk')), files = [], per = 8, n = Math.ceil(blks.length / per);
+  for (var i = 0; i < n; i++) files.push(await snap([hd, lg].concat(blks.slice(i * per, i * per + per)), 'size-chart-' + STAMP + (n > 1 ? '-' + (i + 1) : '') + '.png'));
+  await give(files);
+}); };
+document.querySelectorAll('.one').forEach(function (b) { b.onclick = function () { var blk = b.closest('.blk'); run(async function () { await give([await snap([hd, blk], 'size-chart-' + blk.dataset.code + '-' + STAMP + '.png')]); }); }; });
+`;
 function sizeChartHtml(blocks, staff, stamp) {
-  const body = blocks.map(b => `<table><tr><td class="code">${esc(b.sale)}</td>${'<td></td>'.repeat(PER_BAND * 2 - 1)}</tr>` + b.bands.map((band, bi) => {
+  const body = blocks.map(b => `<div class="blk" data-code="${esc(b.sale)}"><button class="one" data-html2canvas-ignore>🖼 ${esc(b.sale)}</button><table><tr><td class="code">${esc(b.sale)}</td>${'<td></td>'.repeat(PER_BAND * 2 - 1)}</tr>` + b.bands.map((band, bi) => {
     let h = '<tr>' + Array.from({ length: PER_BAND }, (_, i) => { const x = band[i]; if (!x) return '<td></td><td></td>'; const [f, t] = colourOf(x.col); return `<td class="col"><span style="background:#${f};color:#${t}">${esc(x.col)}</span></td><td></td>`; }).join('') + '</tr>';
     const n = Math.max(...band.map(x => x.rows.length)) + 1;
     for (let r = 0; r < n; r++) h += '<tr>' + Array.from({ length: PER_BAND }, (_, i) => { const x = band[i] && band[i].rows[r]; return x ? `<td class="sz"><span>${esc(x.size)}</span></td><td class="q${isDiff(x) ? ' diff' : ''}">${x.c}${isDiff(x) ? `<small>PokPok ${x.sys}</small>` : ''}</td>` : `<td class="sz">${band[i] ? '<span>&nbsp;</span>' : ''}</td><td></td>`; }).join('') + '</tr>';
     return h + '<tr class="tot">' + Array.from({ length: PER_BAND }, (_, i) => `<td class="lab">${i === 0 && bi === b.bands.length - 1 ? 'សរុប ' + b.total : ''}</td><td>${band[i] ? band[i].total : ''}</td>`).join('') + '</tr>';
-  }).join('') + '</table>').join('');
+  }).join('') + '</table></div>').join('');
   return `<!doctype html><html lang="km"><head><meta charset="utf-8"><title>Size chart ${esc(stamp.slice(0, 10))}</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;700&display=swap" rel="stylesheet">
 <style>@page{size:A4 portrait;margin:10mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -373,21 +404,28 @@ body{font:14px 'Noto Sans Khmer',system-ui,sans-serif;color:#15171c;margin:12px;
 table{border-collapse:collapse;width:100%;table-layout:fixed;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid}
 td{border:1px solid #000;background:#fce8a6;height:30px;text-align:center;padding:2px 4px;font-size:15px}
 td.code{font-size:19px;font-weight:700}
-td.col span,td.sz span{display:block;border-radius:8px;padding:1px 4px;font-weight:700;line-height:22px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+td.col span,td.sz span{display:block;border-radius:8px;padding:1px 3px;font-weight:700;line-height:22px}td.col span{font-size:14px;line-height:20px;padding:2px 3px;word-break:break-word}
 td.col span{border:1px solid #bbb}td.sz span{background:#e5e7eb}
 td.q.diff{color:#c62828;font-weight:700}td.q small{display:block;font-size:9px;line-height:1;font-weight:400}
 tr.tot td{background:#fff;font-weight:700}tr.tot td.lab{text-align:left;font-size:13px}
 .bar{margin-bottom:10px}.bar button{font:inherit;padding:6px 16px;border-radius:8px;border:1px solid #2f6fed;background:#2f6fed;color:#fff;font-weight:700;cursor:pointer}
-@media print{.bar{display:none}body{margin:0}}</style></head><body>
-<div class="bar"><button onclick="print()">🖨 Print · បោះពុម្ព</button></div>
+.blk{position:relative;break-inside:avoid;page-break-inside:avoid}.blk table{margin-bottom:12px}
+.one{position:absolute;right:4px;top:3px;font:inherit;font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid #888;background:#fff;cursor:pointer}
+.cap{position:absolute;left:-10000px;top:0;width:800px;background:#fff;padding:12px}
+#pmsg{font-size:13px;color:#166534;margin-left:6px}
+@media print{.bar,.one{display:none}body{margin:0}}</style>
+</head><body>
+<div class="bar"><button onclick="print()">🖨 Print · បោះពុម្ព</button> <button id="picall">🖼 Save as picture · រក្សាទុកជារូបភាព</button><span id="pmsg"></span>
+<div style="font-size:12px;color:#5b6270;margin-top:4px">Tap 🖼 on a code to save only that code · ចុច 🖼 លើកូដ ដើម្បីរក្សាទុកតែកូដនោះ</div></div>
+<div id="sheet">
 <div class="hd"><span>VHM Stock Count · តារាងទំហំ</span><span>${staff ? 'Counted by ' + esc(staff) + ' · ' : ''}${esc(stamp.slice(0, 16))}</span></div>
-<div class="lg">Red number = different from the PokPok qty · លេខក្រហម = ខុសពីចំនួន PokPok</div>${body}</body></html>`;
+<div class="lg">Red number = different from the PokPok qty · លេខក្រហម = ខុសពីចំនួន PokPok</div>${body}</div>
+<script>${SHOT_JS.replace('__STAMP__', esc(stamp.slice(0, 16).replace(/[: ]/g, '-')))}<\/script></body></html>`;
 }
 $('printchart').onclick = () => {
   if (!MAP || !C.codes.length) { say('warn', bl('Nothing counted yet', 'មិនទាន់បានរាប់អ្វីទេ'), ''); return; }
   const w = window.open('', '_blank'); if (!w) { say('warn', bl('Allow pop-ups to print', 'សូមអនុញ្ញាត pop-up ដើម្បីបោះពុម្ព'), ''); return; }
   w.document.write(sizeChartHtml(sizeChart(C.codes.slice().sort()), $('staff').value.trim(), now())); w.document.close();
-  w.onload = () => setTimeout(() => w.print(), 400);
 };
 
 /* ---------- report (.xlsx) ---------- */
