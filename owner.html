@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VH MEN Owner</title>
+  <!-- VH MEN Owner 2 (10 Nov 2026): Needs Review filter, daily summary with coverage + margin, auditable order detail.
+       The profit calculation (VHMProfit) is the same copy as scan/profit-core.js; this page only classifies its results. -->
   <style>
 :root { color-scheme:light; font:15px/1.5 system-ui,sans-serif; color:#192a22; background:#f2f4ef; }
 * { box-sizing:border-box; }
@@ -14,8 +16,10 @@ body { margin:0; }
 .brand > span { padding:4px 7px; background:#e0ebe3; border-radius:6px; color:#17382e; font-weight:750; }
 small { display:block; color:#c0d5c7; font-size:10px; letter-spacing:.09em; }
 main { max-width:1076px; margin:auto; padding:24px 18px; }
-h1,h2,p,dd { margin:0; }
+h1,h2,h3,p,dd { margin:0; }
 h1 { font-size:clamp(25px,4vw,36px); line-height:1.15; letter-spacing:-.045em; }
+h2 { font-size:20px; letter-spacing:-.02em; }
+h3 { font-size:13px; margin:16px 0 6px; color:#42604f; letter-spacing:.04em; text-transform:uppercase; }
 .eyebrow { color:#466f59; font-size:11px; font-weight:750; letter-spacing:.09em; margin-bottom:4px; }
 .heading,form { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
 #filters { justify-content:flex-start; margin:18px 0 14px; }
@@ -27,23 +31,41 @@ button:focus-visible,input:focus-visible { outline:2px solid #397155; outline-of
 .surface { background:white; border:1px solid #d8e0d9; border-radius:10px; }
 .login { max-width:520px; margin:7vh auto; padding:26px; display:grid; gap:10px; justify-items:start; }
 .login p:not(.eyebrow), .note, #status { color:#516358; }
-.totals { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
-.totals div { background:#e4eee6; border-radius:8px; padding:10px 13px; }
+.totals { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:9px; }
+.totals div { background:#e4eee6; border-radius:8px; padding:10px 13px; min-width:0; }
 .totals dt { font-size:12px; color:#42604f; }
-.totals dd { font-size:23px; font-weight:750; font-variant-numeric:tabular-nums; }
+.totals dd { font-size:23px; font-weight:750; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.totals dd small { display:inline; color:#516358; font-size:13px; font-weight:500; letter-spacing:0; }
+.totals .hl { background:#24513d; color:#fff; }
+.totals .hl dt, .totals .hl dd small { color:#cfe2d5; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 8px; }
+.chips button { border-radius:99px; padding:5px 12px; font-size:13px; }
+.chips button[aria-pressed="true"] { background:#24513d; border-color:#24513d; color:#fff; }
+.chips button.warn:not([aria-pressed="true"]) { border-color:#d9a86a; color:#794a19; background:#fdf6ec; }
+.chips.sub { margin-top:0; }
+.chips.sub button { font-size:12px; padding:3px 10px; }
 .table-wrap { overflow-x:auto; }
 table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
-th,td { border-bottom:1px solid #e6ebe7; padding:9px 12px; text-align:left; }
+th,td { border-bottom:1px solid #e6ebe7; padding:9px 12px; text-align:left; vertical-align:top; }
 th { background:#f7f9f6; font-size:12px; }
-td:nth-child(2),td:nth-child(3),td:nth-child(4) { white-space:nowrap; }
+td.n, th.n { text-align:right; white-space:nowrap; }
+#orders td:nth-child(3),#orders td:nth-child(4),#orders td:nth-child(5) { white-space:nowrap; text-align:right; }
 .profit { font-weight:750; color:#25563f; }
-.review { color:#794a19; }
+.review { color:#794a19; font-weight:650; }
+.muted { color:#6a7a70; }
 #status,.note { margin:8px 0; font-size:13px; }
-dialog { max-width:min(650px,calc(100vw - 24px)); width:100%; border:1px solid #d8e0d9; border-radius:10px; padding:18px; }
+dialog { max-width:min(760px,calc(100vw - 24px)); width:100%; border:1px solid #d8e0d9; border-radius:10px; padding:18px; }
 dialog::backdrop { background:#142c2590; }
-dialog form { justify-content:flex-end; }
-dialog ul { padding-left:20px; }
-@media (max-width:500px) { th,td { padding:6px; } .totals { gap:5px; } .totals div { padding:6px; } }
+dialog > form { justify-content:flex-end; }
+.callout { border-radius:8px; padding:10px 12px; margin:10px 0; font-size:14px; }
+.callout.ok { background:#e4eee6; color:#1f4a35; }
+.callout.review { background:#fdf3e4; color:#6b3f12; font-weight:400; }
+.callout b { display:block; margin-bottom:2px; }
+.facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:6px 14px; margin:8px 0; }
+.facts div { min-width:0; }
+.facts dt { font-size:11px; color:#5b6b61; letter-spacing:.04em; }
+.facts dd { font-variant-numeric:tabular-nums; font-weight:650; overflow-wrap:anywhere; }
+@media (max-width:500px) { th,td { padding:6px; } .totals { gap:5px; } .totals div { padding:6px; } .totals dd { font-size:19px; } }
   </style>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -60,12 +82,23 @@ dialog ul { padding-left:20px; }
       <p id="login-status" role="status">Connecting to Firebase…</p>
     </section>
     <section id="workspace" hidden>
-      <div class="heading"><div><p class="eyebrow">ORDERS · CAMBODIA TIME</p><h1>Gross profit by order</h1></div><button type="button" id="export" disabled>Download JSON</button></div>
+      <div class="heading"><div><p class="eyebrow">ORDERS · CAMBODIA TIME</p><h1>Daily gross profit</h1></div><button type="button" id="export" disabled>Download JSON</button></div>
       <form id="filters"><label for="date">Vrich order date</label><input type="date" id="date" required><button class="primary" type="submit">Load orders</button></form>
-      <dl class="totals"><div><dt>Orders</dt><dd id="order-count">—</dd></div><div><dt>With gross profit</dt><dd id="profit-count">—</dd></div><div><dt>Gross profit on verified orders</dt><dd id="gross-total">—</dd></div></dl>
+
+      <dl class="totals" id="summary">
+        <div class="hl"><dt>Gross profit · verified orders</dt><dd id="s-gross">—</dd></div>
+        <div><dt>Gross margin</dt><dd id="s-margin">—</dd></div>
+        <div><dt>Net merchandise · verified</dt><dd id="s-merch">—</dd></div>
+        <div><dt>Landed cost · verified</dt><dd id="s-cost">—</dd></div>
+        <div><dt>Coverage</dt><dd id="s-coverage">—</dd></div>
+      </dl>
       <p id="status" role="status"></p>
-      <div class="surface table-wrap"><table><thead><tr><th>Vrich order</th><th>Net merchandise</th><th>Landed cost</th><th>Gross profit</th><th>Verification</th></tr></thead><tbody id="orders"></tbody></table></div>
-      <p class="note">Gross profit covers merchandise. Delivery, payment collection, and bank matching are handled separately.</p>
+
+      <div class="chips" id="groups" role="group" aria-label="Filter orders by status"></div>
+      <div class="chips sub" id="reasons" role="group" aria-label="Filter Needs Review by reason" hidden></div>
+
+      <div class="surface table-wrap"><table><thead><tr><th>Vrich order</th><th>Customer</th><th class="n">Net merchandise</th><th class="n">Landed cost</th><th class="n">Gross profit</th><th>Status</th></tr></thead><tbody id="orders"></tbody></table></div>
+      <p class="note">Gross profit covers merchandise only (Vrich amount after discount minus verified quantity × landed unit cost). Delivery, payment collection and bank matching are handled separately. Margin = verified gross profit ÷ verified net merchandise. Coverage = verified orders ÷ orders that are not cancelled.</p>
     </section>
   </main>
   <dialog id="detail"><form method="dialog"><button>Close</button></form><h2 id="detail-title"></h2><div id="detail-body"></div></dialog>
@@ -81,6 +114,7 @@ window.VHM_OWNER_CONFIG = {
     "appId": "1:728781560326:web:4f88ffa992cb6175f40187"
   }
 };
+/* ===== VHMProfit: identical copy of scan/profit-core.js ===== */
 (function (root) {
   'use strict';
 
@@ -165,68 +199,187 @@ window.VHM_OWNER_CONFIG = {
 
   root.VHMProfit = { cents, skuKey, catalogCollection, snapshotOperations, catalogReader, calculate };
 })(globalThis);
+
+/* ===== Owner page ===== */
 'use strict';
 
 const get = id => document.getElementById(id);
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const money = cents => cents == null ? '—' : usd.format(cents / 100);
+const pct = (num, den) => den > 0 ? (Math.round(num / den * 1000) / 10).toFixed(1) + '%' : '—';
 const config = window.VHM_OWNER_CONFIG;
 let generation = 0;
 let exportData = null;
+let records = [];
+let view = { group: 'all', code: 'all' };
+
+/* Stable status codes. The reason texts come from VHMProfit.calculate; an unknown text falls into "other" (still Needs Review). */
+const REASON_CODE = {
+  'Cancelled': 'cancelled',
+  'Waiting for completed scan': 'waiting',
+  'Packed short': 'packed_short',
+  'Older scan has no SKU evidence': 'old_evidence',
+  'Order items changed after scanning': 'order_changed',
+  'Vrich merchandise or discount needs review': 'amounts',
+  'Scan has no verified PokPok SKU': 'incomplete_evidence',
+  'Some items lack exact PokPok scan evidence': 'incomplete_evidence',
+  'Missing landed cost for a scanned SKU': 'missing_cost'
+};
+const STATUS = {
+  verified: { label: 'Verified', group: 'verified' },
+  missing_cost: { label: 'Missing landed cost', group: 'review',
+    help: 'A scanned PokPok SKU has no Supply Price in the cost snapshot the scan was pinned to. A later catalog upload does not change pinned costs, so this order counts only after it is scanned again (Pack again) while a catalog with the cost is live.' },
+  packed_short: { label: 'Packed short', group: 'review',
+    help: 'The order shipped without some items. Profit is not calculated for partial packs; fix the order in Vrich and re-upload it, or leave it out.' },
+  order_changed: { label: 'Order changed after scan', group: 'review',
+    help: 'The Vrich order was edited after it was packed, so the scanned items may not match. Check the parcel; scan it again (Pack again) to re-pin the evidence.' },
+  old_evidence: { label: 'Older scan, no SKU evidence', group: 'review',
+    help: 'Packed before the Scan update that records the accepted PokPok SKU. These orders cannot be priced without scanning again.' },
+  incomplete_evidence: { label: 'Incomplete scan evidence', group: 'review',
+    help: 'At least one piece was counted without a PokPok SKU: a typed Vrich stock code, a supervisor PIN approval, a ⚡ technical quirk or a Mixed code. Those pieces have no landed cost to use.' },
+  amounts: { label: 'Vrich amounts need review', group: 'review',
+    help: 'The Vrich line amounts do not add up to the order Amount, the discount is missing or larger than the amount, or the export repeated different totals for one order. Check the Price, Amount and Discount columns in the order export and upload it again.' },
+  other: { label: 'Other review', group: 'review', help: 'The calculation returned a reason this page does not know yet.' },
+  waiting: { label: 'Waiting for scan', group: 'waiting', help: 'No completed scan for this order yet.' },
+  cancelled: { label: 'Cancelled', group: 'cancelled', help: 'Cancelled in Vrich. Not counted.' }
+};
+const GROUPS = [['all', 'All'], ['verified', 'Verified'], ['review', 'Needs review'], ['waiting', 'Waiting'], ['cancelled', 'Cancelled']];
+const REVIEW_ORDER = ['missing_cost', 'amounts', 'order_changed', 'incomplete_evidence', 'packed_short', 'old_evidence', 'other'];
+
+function el(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v; else e[k] = v;
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+function table(head, rows, numeric) {
+  const nums = new Set(numeric || []);
+  const hr = el('tr'); head.forEach((h, i) => hr.append(el('th', { text: h, class: nums.has(i) ? 'n' : '' })));
+  const body = el('tbody');
+  rows.forEach(r => { const tr = el('tr'); r.forEach((c, i) => tr.append(el('td', { text: c == null || c === '' ? '—' : String(c), class: nums.has(i) ? 'n' : '' }))); body.append(tr); });
+  return el('div', { class: 'surface table-wrap' }, el('table', null, el('thead', null, hr), body));
+}
+function facts(pairs) {
+  const dl = el('dl', { class: 'facts' });
+  pairs.forEach(([k, v]) => dl.append(el('div', null, el('dt', { text: k }), el('dd', { text: v == null || v === '' ? '—' : String(v) }))));
+  return dl;
+}
 
 get('date').value = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
 
 function resetReport() {
-  exportData = null;
+  exportData = null; records = []; view = { group: 'all', code: 'all' };
   get('export').disabled = true;
   get('orders').replaceChildren();
-  for (const id of ['order-count', 'profit-count', 'gross-total']) get(id).textContent = '—';
+  get('groups').replaceChildren();
+  get('reasons').replaceChildren(); get('reasons').hidden = true;
+  for (const id of ['s-gross', 's-margin', 's-merch', 's-cost', 's-coverage']) get(id).textContent = '—';
   get('status').textContent = '';
   if (get('detail').open) get('detail').close();
 }
 
-function showDetail(record) {
-  get('detail-title').textContent = `Vrich order #${record.orderId}`;
-  const body = get('detail-body');
-  body.replaceChildren();
-  const summary = document.createElement('p');
-  summary.textContent = record.reason || `Net merchandise ${money(record.merchandise)} · Landed cost ${money(record.cost)} · Gross profit ${money(record.grossProfit)}`;
-  body.append(summary);
-  if (record.costLines) {
-    const lines = document.createElement('ul');
-    for (const line of record.costLines) {
-      const row = document.createElement('li');
-      row.textContent = `${record.items[line.line].description || record.items[line.line].stockCode} · ${line.sku} · ${line.quantity} × ${money(line.unitCostCents)} · catalog ${line.version}`;
-      lines.append(row);
-    }
-    body.append(lines);
-  }
-  get('detail').showModal();
+function summarize(list) {
+  const verified = list.filter(r => r.status === 'verified');
+  const merch = verified.reduce((s, r) => s + r.merchandise, 0);
+  const cost = verified.reduce((s, r) => s + r.cost, 0);
+  const gross = verified.reduce((s, r) => s + r.grossProfit, 0);
+  const byStatus = {}; list.forEach(r => { byStatus[r.status] = (byStatus[r.status] || 0) + 1; });
+  const cancelled = byStatus.cancelled || 0;
+  const countable = list.length - cancelled;
+  return {
+    orders: list.length, verifiedOrders: verified.length, countableOrders: countable,
+    needsReview: list.filter(r => r.group === 'review').length, waiting: byStatus.waiting || 0, cancelled,
+    netMerchandiseCents: merch, landedCostCents: cost, grossProfitCents: gross,
+    grossMarginPercent: merch > 0 ? Math.round(gross / merch * 1000) / 10 : null,
+    coveragePercent: countable > 0 ? Math.round(verified.length / countable * 1000) / 10 : null,
+    byStatus
+  };
 }
 
-function showReport(date, records) {
-  const verified = records.filter(row => !row.reason);
-  const rows = records.map(record => {
+function drawSummary(S) {
+  get('s-gross').textContent = S.verifiedOrders ? money(S.grossProfitCents) : '—';
+  get('s-margin').textContent = pct(S.grossProfitCents, S.netMerchandiseCents);
+  get('s-merch').textContent = S.verifiedOrders ? money(S.netMerchandiseCents) : '—';
+  get('s-cost').textContent = S.verifiedOrders ? money(S.landedCostCents) : '—';
+  const cov = get('s-coverage'); cov.replaceChildren(pct(S.verifiedOrders, S.countableOrders), el('small', { text: ` ${S.verifiedOrders} of ${S.countableOrders}` }));
+  const parts = [];
+  if (S.needsReview) parts.push(`${S.needsReview} need review`);
+  if (S.waiting) parts.push(`${S.waiting} waiting for a scan`);
+  if (S.cancelled) parts.push(`${S.cancelled} cancelled`);
+  get('status').textContent = S.orders ? `${S.orders} orders on this date · ${S.verifiedOrders} verified` + (parts.length ? ' · ' + parts.join(' · ') : '') + '.' : 'No orders found on this date.';
+}
+
+function drawChips() {
+  const count = g => g === 'all' ? records.length : records.filter(r => r.group === g).length;
+  get('groups').replaceChildren(...GROUPS.map(([g, label]) => {
+    const n = count(g);
+    const b = el('button', { type: 'button', text: `${label} · ${n}`, class: g === 'review' && n ? 'warn' : '' });
+    b.setAttribute('aria-pressed', String(view.group === g));
+    b.onclick = () => { view = { group: g, code: 'all' }; drawChips(); drawRows(); };
+    return b;
+  }));
+  const sub = get('reasons');
+  if (view.group !== 'review') { sub.hidden = true; sub.replaceChildren(); return; }
+  const codes = REVIEW_ORDER.filter(c => records.some(r => r.status === c));
+  sub.hidden = !codes.length;
+  sub.replaceChildren(...[['all', 'All reasons'], ...codes.map(c => [c, STATUS[c].label])].map(([c, label]) => {
+    const n = c === 'all' ? count('review') : records.filter(r => r.status === c).length;
+    const b = el('button', { type: 'button', text: `${label} · ${n}` });
+    b.setAttribute('aria-pressed', String(view.code === c));
+    b.onclick = () => { view.code = c; drawChips(); drawRows(); };
+    return b;
+  }));
+}
+
+function drawRows() {
+  const shown = records.filter(r => (view.group === 'all' || r.group === view.group) && (view.code === 'all' || r.status === view.code));
+  const rows = shown.map(record => {
     const row = document.createElement('tr');
-    const id = row.insertCell();
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = `#${record.orderId}`;
-    button.onclick = () => showDetail(record);
-    id.append(button);
+    const btn = el('button', { type: 'button', text: `#${record.orderId}` });
+    btn.onclick = () => showDetail(record);
+    row.insertCell().append(btn);
+    row.insertCell().textContent = record.customer || '—';
     for (const value of [record.merchandise, record.cost, record.grossProfit]) row.insertCell().textContent = money(value);
     const status = row.insertCell();
-    status.className = record.reason ? 'review' : 'profit';
-    status.textContent = record.reason || 'Verified';
+    status.className = record.status === 'verified' ? 'profit' : record.group === 'review' ? 'review' : 'muted';
+    status.textContent = STATUS[record.status].label;
     return row;
   });
+  if (!rows.length && records.length) { const tr = document.createElement('tr'); const td = tr.insertCell(); td.colSpan = 6; td.className = 'muted'; td.textContent = 'No orders in this view.'; rows.push(tr); }
   get('orders').replaceChildren(...rows);
-  get('order-count').textContent = records.length;
-  get('profit-count').textContent = verified.length;
-  get('gross-total').textContent = verified.length ? money(verified.reduce((sum, row) => sum + row.grossProfit, 0)) : '—';
-  get('status').textContent = records.length ? `${records.length - verified.length} orders without a verified profit figure.` : 'No orders found on this date.';
-  exportData = { schemaVersion: 1, currency: 'USD', orderDate: date, exportedAt: new Date().toISOString(), orders: records };
-  get('export').disabled = !records.length;
+}
+
+function showDetail(r) {
+  get('detail-title').textContent = `Vrich order #${r.orderId}`;
+  const body = get('detail-body');
+  const st = STATUS[r.status];
+  const call = el('div', { class: 'callout ' + (r.status === 'verified' ? 'ok' : 'review') }, el('b', { text: st.label }));
+  if (r.status === 'verified') call.append(`Net merchandise ${money(r.merchandise)} − landed cost ${money(r.cost)} = gross profit ${money(r.grossProfit)} (margin ${pct(r.grossProfit, r.merchandise)}).`);
+  else call.append((r.reason && r.status === 'other' ? r.reason + ' — ' : '') + (st.help || ''));
+
+  const net = r.merchandiseBeforeDiscountCents != null && r.discountCents != null ? r.merchandiseBeforeDiscountCents - r.discountCents : null;
+  const kids = [call,
+    facts([['Customer', r.customer], ['Courier', r.courier], ['Order revision', r.revision], ['Packing', r.packingStatus], ['Packed by', r.packedBy], ['Packed at', r.packedAt]]),
+    el('h3', { text: 'Vrich amounts' }),
+    facts([['Merchandise (Amount)', money(r.merchandiseBeforeDiscountCents)], ['Discount', money(r.discountCents)], ['Net merchandise', money(net)],
+      ['Delivery fee (separate)', money(r.deliveryFeeCents)], ['Customer total', money(r.customerTotalCents)]]),
+    el('h3', { text: 'Vrich order lines' }),
+    table(['#', 'Stock code', 'Description', 'Qty', 'Line amount'],
+      r.items.map((it, i) => [i + 1, it.stockCode, it.description, it.quantity, money(it.lineAmountCents)]), [0, 3, 4])];
+
+  const lines = r.costLines || r.evidenceLines;
+  if (lines && lines.length) {
+    kids.push(el('h3', { text: r.costLines ? 'Verified scan evidence and landed cost' : 'Scan evidence' }));
+    kids.push(table(['Line', 'PokPok SKU', 'Qty', 'Unit cost', 'Line cost', 'Catalog version'],
+      lines.map(l => [`${l.line + 1} · ${(r.items[l.line] || {}).stockCode || ''}`, l.sku, l.quantity,
+        l.unitCostCents === undefined ? '' : l.unitCostCents == null ? 'missing' : money(l.unitCostCents),
+        Number.isSafeInteger(l.unitCostCents) ? money(l.unitCostCents * l.quantity) : '', l.version]), [2, 3, 4]));
+    if (r.costLines) kids.push(el('p', { class: 'note', text: 'Costs are pinned to the catalog version recorded at scan time, so a later PokPok upload does not change this order.' }));
+  }
+  body.replaceChildren(...kids);
+  get('detail').showModal();
 }
 
 function init() {
@@ -243,6 +396,23 @@ function init() {
     return doc.exists ? doc.data() : null;
   };
 
+  // evidence of the session the calculation used (latest complete/short), grouped for the detail view
+  function latestSession(sessions) {
+    return sessions.filter(s => s.result === 'complete' || s.result === 'short').sort((a, b) => String(b.end || '').localeCompare(String(a.end || '')))[0] || null;
+  }
+  async function evidenceLines(session, readCost, withCost) {
+    const scans = (session && session.profitEvidence && session.profitEvidence.scans) || [];
+    const groups = new Map();
+    for (const s of scans) {
+      if (!Number.isInteger(s.line) || !s.sku) continue;
+      const key = JSON.stringify([s.line, s.sku, s.version]);
+      if (groups.has(key)) groups.get(key).quantity++; else groups.set(key, { line: s.line, sku: s.sku, version: s.version || '', quantity: 1 });
+    }
+    const out = [...groups.values()];
+    if (withCost) await Promise.all(out.map(async l => { l.unitCostCents = l.version ? await readCost(l.version, l.sku) : null; }));
+    return out;
+  }
+
   async function loadOrders() {
     if (!authorized) return;
     const request = ++generation;
@@ -253,25 +423,38 @@ function init() {
       const orders = await db.collection('sv2_orders').where('d', '==', date).get({ source: 'server' });
       const ids = orders.docs.map(doc => doc.id);
       const sessions = new Map();
-      for (let offset = 0; offset < ids.length; offset += 10) {
-        const group = await db.collection('sv2_log').where('order', 'in', ids.slice(offset, offset + 10)).get({ source: 'server' });
+      for (let offset = 0; offset < ids.length; offset += 30) {
+        const group = await db.collection('sv2_log').where('order', 'in', ids.slice(offset, offset + 30)).get({ source: 'server' });
         for (const doc of group.docs) {
           const log = doc.data();
           if (!sessions.has(log.order)) sessions.set(log.order, []);
           sessions.get(log.order).push(log);
         }
+        if (request !== generation) return;
       }
       const readCost = VHMProfit.catalogReader(read);
-      const records = await Promise.all(orders.docs.map(async doc => {
-        const order = doc.data();
-        const profit = await VHMProfit.calculate(order, sessions.get(doc.id) || [], readCost);
-        return { orderId: doc.id, revision: order.rev ?? 1,
+      const list = await Promise.all(orders.docs.map(async doc => {
+        const order = doc.data(), mine = sessions.get(doc.id) || [];
+        const profit = await VHMProfit.calculate(order, mine.slice(), readCost);
+        const status = profit.reason ? (REASON_CODE[profit.reason] || 'other') : 'verified';
+        const latest = latestSession(mine);
+        const rec = { orderId: doc.id, status, group: STATUS[status].group, revision: order.rev ?? 1,
+          customer: order.fb || order.user || '', courier: order.ship || null,
+          packedBy: latest ? latest.staff || '' : '', packedAt: latest ? String(latest.end || '').slice(0, 16).replace('T', ' ') : '',
           discountCents: order.finance?.discount ?? null, merchandiseBeforeDiscountCents: order.finance?.amount ?? null,
           deliveryFeeCents: order.finance?.deliveryFee ?? null, customerTotalCents: order.finance?.customerTotal ?? null,
-          courier: order.ship || null,
-          items: (order.items || []).map(item => ({ stockCode: item.stock || item.code, description: item.desc || '', quantity: item.qty, lineAmountCents: item.lineCents ?? null })), ...profit };
+          items: (order.items || []).map(item => ({ stockCode: item.stock || item.code, description: item.desc || '', quantity: item.qty, lineAmountCents: item.lineCents ?? null })),
+          ...profit };
+        if (status !== 'verified' && latest && latest.profitEvidence) rec.evidenceLines = await evidenceLines(latest, readCost, status === 'missing_cost');
+        return rec;
       }));
-      if (request === generation) showReport(date, records);
+      if (request !== generation) return;
+      list.sort((a, b) => a.orderId.localeCompare(b.orderId, 'en', { numeric: true }));
+      records = list;
+      const S = summarize(list);
+      drawSummary(S); drawChips(); drawRows();
+      exportData = { schemaVersion: 2, currency: 'USD', orderDate: date, exportedAt: new Date().toISOString(), summary: S, orders: list };
+      get('export').disabled = !list.length;
     } catch (error) {
       if (request === generation) get('status').textContent = `Could not load the report (${error.code || 'read failed'}). Check Firebase access and try again.`;
     }
