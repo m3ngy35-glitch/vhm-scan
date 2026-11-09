@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VH MEN Owner</title>
+  <style>
+:root { color-scheme:light; font:15px/1.5 system-ui,sans-serif; color:#192a22; background:#f2f4ef; }
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+body { margin:0; }
+.top { display:flex; justify-content:space-between; align-items:center; padding:14px max(18px,calc((100vw - 1040px)/2)); background:#17382e; color:#fff; }
+.brand { display:flex; gap:10px; align-items:center; letter-spacing:.04em; }
+.brand > span { padding:4px 7px; background:#e0ebe3; border-radius:6px; color:#17382e; font-weight:750; }
+small { display:block; color:#c0d5c7; font-size:10px; letter-spacing:.09em; }
+main { max-width:1076px; margin:auto; padding:24px 18px; }
+h1,h2,p,dd { margin:0; }
+h1 { font-size:clamp(25px,4vw,36px); line-height:1.15; letter-spacing:-.045em; }
+.eyebrow { color:#466f59; font-size:11px; font-weight:750; letter-spacing:.09em; margin-bottom:4px; }
+.heading,form { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
+#filters { justify-content:flex-start; margin:18px 0 14px; }
+button,input { font:inherit; border:1px solid #bccbc1; border-radius:6px; padding:7px 10px; background:white; color:#192a22; }
+button { cursor:pointer; font-weight:650; }
+button:disabled { cursor:default; opacity:.55; }
+button:focus-visible,input:focus-visible { outline:2px solid #397155; outline-offset:2px; }
+.primary { background:#24513d; border-color:#24513d; color:#fff; }
+.surface { background:white; border:1px solid #d8e0d9; border-radius:10px; }
+.login { max-width:520px; margin:7vh auto; padding:26px; display:grid; gap:10px; justify-items:start; }
+.login p:not(.eyebrow), .note, #status { color:#516358; }
+.totals { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.totals div { background:#e4eee6; border-radius:8px; padding:10px 13px; }
+.totals dt { font-size:12px; color:#42604f; }
+.totals dd { font-size:23px; font-weight:750; font-variant-numeric:tabular-nums; }
+.table-wrap { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+th,td { border-bottom:1px solid #e6ebe7; padding:9px 12px; text-align:left; }
+th { background:#f7f9f6; font-size:12px; }
+td:nth-child(2),td:nth-child(3),td:nth-child(4) { white-space:nowrap; }
+.profit { font-weight:750; color:#25563f; }
+.review { color:#794a19; }
+#status,.note { margin:8px 0; font-size:13px; }
+dialog { max-width:min(650px,calc(100vw - 24px)); width:100%; border:1px solid #d8e0d9; border-radius:10px; padding:18px; }
+dialog::backdrop { background:#142c2590; }
+dialog form { justify-content:flex-end; }
+dialog ul { padding-left:20px; }
+@media (max-width:500px) { th,td { padding:6px; } .totals { gap:5px; } .totals div { padding:6px; } }
+  </style>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <header class="top"><div class="brand"><span>VH</span><div><strong>VH MEN</strong><small>OWNER WORKSPACE</small></div></div><button id="sign-out" type="button" hidden>Sign out</button></header>
+  <main>
+    <section id="login" class="surface login">
+      <p class="eyebrow">OWNER ACCESS</p>
+      <h1>Sign in to VH MEN</h1>
+      <p>Review gross profit by Vrich order after the items pass PokPok scan verification.</p>
+      <button id="sign-in" type="button" class="primary" disabled>Sign in with Google</button>
+      <p id="login-status" role="status">Connecting to Firebase…</p>
+    </section>
+    <section id="workspace" hidden>
+      <div class="heading"><div><p class="eyebrow">ORDERS · CAMBODIA TIME</p><h1>Gross profit by order</h1></div><button type="button" id="export" disabled>Download JSON</button></div>
+      <form id="filters"><label for="date">Vrich order date</label><input type="date" id="date" required><button class="primary" type="submit">Load orders</button></form>
+      <dl class="totals"><div><dt>Orders</dt><dd id="order-count">—</dd></div><div><dt>With gross profit</dt><dd id="profit-count">—</dd></div><div><dt>Gross profit on verified orders</dt><dd id="gross-total">—</dd></div></dl>
+      <p id="status" role="status"></p>
+      <div class="surface table-wrap"><table><thead><tr><th>Vrich order</th><th>Net merchandise</th><th>Landed cost</th><th>Gross profit</th><th>Verification</th></tr></thead><tbody id="orders"></tbody></table></div>
+      <p class="note">Gross profit covers merchandise. Delivery, payment collection, and bank matching are handled separately.</p>
+    </section>
+  </main>
+  <dialog id="detail"><form method="dialog"><button>Close</button></form><h2 id="detail-title"></h2><div id="detail-body"></div></dialog>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+window.VHM_OWNER_CONFIG = {
+  "firebase": {
+    "apiKey": "AIzaSyCzA--FJTKl74TI0FRhDNGurnOimZjgja0",
+    "authDomain": "vhm-menu.firebaseapp.com",
+    "projectId": "vhm-menu",
+    "storageBucket": "vhm-menu.firebasestorage.app",
+    "messagingSenderId": "728781560326",
+    "appId": "1:728781560326:web:4f88ffa992cb6175f40187"
+  }
+};
+(function (root) {
+  'use strict';
+
+  const catalogCollection = 'sv2_profit_costs';
+  const skuKey = value => String(value ?? '').trim().toLowerCase();
+
+  function cents(value) {
+    if (value === null || value === undefined || String(value).trim() === '') return null;
+    const amount = Number(String(value).trim().replace(/^\$\s*/, '').replace(/,/g, ''));
+    if (!Number.isFinite(amount) || amount < 0) return null;
+    const rounded = Math.round((amount + Number.EPSILON) * 100);
+    return Number.isSafeInteger(rounded) ? rounded : null;
+  }
+
+  function snapshotOperations(version, parent, rows) {
+    const parts = [];
+    for (let offset = 0; offset < rows.length; offset += 500) {
+      parts.push({ col: catalogCollection, id: `${version}_${parts.length}`, data: { rows: rows.slice(offset, offset + 500) } });
+    }
+    return [...parts, { col: catalogCollection, id: version, data: { parent, parts: parts.length } }];
+  }
+
+  function catalogReader(read) {
+    const cache = new Map();
+    function load(version) {
+      if (!cache.has(version)) cache.set(version, (async () => {
+        const manifest = await read(catalogCollection, version);
+        if (!manifest) return null;
+        const parts = await Promise.all(Array.from({ length: manifest.parts }, (_, i) => read(catalogCollection, `${version}_${i}`)));
+        if (parts.some(part => !part)) return null;
+        const costs = new Map(parts.flatMap(part => part.rows.map(row => [skuKey(row.sku), row.costCents])));
+        return { costs, parent: manifest.parent };
+      })());
+      return cache.get(version);
+    }
+    return async (version, sku) => {
+      const key = skuKey(sku), seen = new Set();
+      for (let current = version; current && !seen.has(current);) {
+        seen.add(current);
+        const snapshot = await load(current);
+        if (!snapshot) return null;
+        if (snapshot.costs.has(key)) return snapshot.costs.get(key);
+        current = snapshot.parent;
+      }
+      return null;
+    };
+  }
+
+  async function calculate(order, sessions, readCost) {
+    const completed = sessions.filter(session => session.result === 'complete' || session.result === 'short');
+    const latest = completed.sort((a, b) => String(b.end || '').localeCompare(String(a.end || '')))[0];
+    const packingStatus = order.st === 'c' ? 'Cancelled' : latest ? latest.result === 'short' ? 'Packed short' : 'Packed' : 'Waiting';
+    const review = reason => ({ reason, packingStatus });
+    if (order.st === 'c') return review('Cancelled');
+    if (!latest) return review('Waiting for completed scan');
+    if (latest.result === 'short') return review('Packed short');
+    const evidence = latest.profitEvidence;
+    if (!evidence) return review('Older scan has no SKU evidence');
+    if (evidence.orderSig !== order.sig || evidence.revision !== (order.rev ?? 1)) return review('Order items changed after scanning');
+    const finance = order.finance;
+    const items = order.items || [];
+    if (!finance || !Number.isSafeInteger(finance.amount) || !Number.isSafeInteger(finance.discount) || finance.discount > finance.amount || items.some(item => !Number.isSafeInteger(item.lineCents)) || items.reduce((sum, item) => sum + item.lineCents, 0) !== finance.amount) return review('Vrich merchandise or discount needs review');
+    const scans = evidence.scans || [];
+    const counts = items.map(() => 0);
+    for (const scan of scans) {
+      if (!Number.isInteger(scan.line) || !items[scan.line] || !scan.sku || !scan.version) return review('Scan has no verified PokPok SKU');
+      counts[scan.line]++;
+    }
+    if (items.some((item, index) => counts[index] !== item.qty)) return review('Some items lack exact PokPok scan evidence');
+    const groups = new Map();
+    for (const scan of scans) {
+      const key = JSON.stringify([scan.line, scan.sku, scan.version]);
+      if (groups.has(key)) groups.get(key).quantity++;
+      else groups.set(key, { ...scan, quantity: 1 });
+    }
+    const costLines = await Promise.all([...groups.values()].map(async item => ({ ...item, unitCostCents: await readCost(item.version, item.sku) })));
+    if (costLines.some(item => !Number.isSafeInteger(item.unitCostCents) || item.unitCostCents <= 0)) return review('Missing landed cost for a scanned SKU');
+    const cost = costLines.reduce((sum, item) => sum + item.unitCostCents * item.quantity, 0);
+    const merchandise = finance.amount - finance.discount;
+    return { merchandise, cost, grossProfit: merchandise - cost, costLines, packingStatus };
+  }
+
+  root.VHMProfit = { cents, skuKey, catalogCollection, snapshotOperations, catalogReader, calculate };
+})(globalThis);
+'use strict';
+
+const get = id => document.getElementById(id);
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+const money = cents => cents == null ? '—' : usd.format(cents / 100);
+const config = window.VHM_OWNER_CONFIG;
+let generation = 0;
+let exportData = null;
+
+get('date').value = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+
+function resetReport() {
+  exportData = null;
+  get('export').disabled = true;
+  get('orders').replaceChildren();
+  for (const id of ['order-count', 'profit-count', 'gross-total']) get(id).textContent = '—';
+  get('status').textContent = '';
+  if (get('detail').open) get('detail').close();
+}
+
+function showDetail(record) {
+  get('detail-title').textContent = `Vrich order #${record.orderId}`;
+  const body = get('detail-body');
+  body.replaceChildren();
+  const summary = document.createElement('p');
+  summary.textContent = record.reason || `Net merchandise ${money(record.merchandise)} · Landed cost ${money(record.cost)} · Gross profit ${money(record.grossProfit)}`;
+  body.append(summary);
+  if (record.costLines) {
+    const lines = document.createElement('ul');
+    for (const line of record.costLines) {
+      const row = document.createElement('li');
+      row.textContent = `${record.items[line.line].description || record.items[line.line].stockCode} · ${line.sku} · ${line.quantity} × ${money(line.unitCostCents)} · catalog ${line.version}`;
+      lines.append(row);
+    }
+    body.append(lines);
+  }
+  get('detail').showModal();
+}
+
+function showReport(date, records) {
+  const verified = records.filter(row => !row.reason);
+  const rows = records.map(record => {
+    const row = document.createElement('tr');
+    const id = row.insertCell();
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = `#${record.orderId}`;
+    button.onclick = () => showDetail(record);
+    id.append(button);
+    for (const value of [record.merchandise, record.cost, record.grossProfit]) row.insertCell().textContent = money(value);
+    const status = row.insertCell();
+    status.className = record.reason ? 'review' : 'profit';
+    status.textContent = record.reason || 'Verified';
+    return row;
+  });
+  get('orders').replaceChildren(...rows);
+  get('order-count').textContent = records.length;
+  get('profit-count').textContent = verified.length;
+  get('gross-total').textContent = verified.length ? money(verified.reduce((sum, row) => sum + row.grossProfit, 0)) : '—';
+  get('status').textContent = records.length ? `${records.length - verified.length} orders without a verified profit figure.` : 'No orders found on this date.';
+  exportData = { schemaVersion: 1, currency: 'USD', orderDate: date, exportedAt: new Date().toISOString(), orders: records };
+  get('export').disabled = !records.length;
+}
+
+function init() {
+  if (!config?.firebase?.apiKey || !config.firebase.projectId || !config.firebase.authDomain || !window.firebase) {
+    get('login-status').textContent = 'Setup required. Add the existing Firebase Web configuration.';
+    return;
+  }
+  const app = firebase.initializeApp(config.firebase, 'vhm-owner');
+  const auth = app.auth();
+  const db = app.firestore();
+  let authorized = false;
+  const read = async (collection, id) => {
+    const doc = await db.collection(collection).doc(id).get({ source: 'server' });
+    return doc.exists ? doc.data() : null;
+  };
+
+  async function loadOrders() {
+    if (!authorized) return;
+    const request = ++generation;
+    const date = get('date').value;
+    resetReport();
+    get('status').textContent = 'Loading orders and scan evidence…';
+    try {
+      const orders = await db.collection('sv2_orders').where('d', '==', date).get({ source: 'server' });
+      const ids = orders.docs.map(doc => doc.id);
+      const sessions = new Map();
+      for (let offset = 0; offset < ids.length; offset += 10) {
+        const group = await db.collection('sv2_log').where('order', 'in', ids.slice(offset, offset + 10)).get({ source: 'server' });
+        for (const doc of group.docs) {
+          const log = doc.data();
+          if (!sessions.has(log.order)) sessions.set(log.order, []);
+          sessions.get(log.order).push(log);
+        }
+      }
+      const readCost = VHMProfit.catalogReader(read);
+      const records = await Promise.all(orders.docs.map(async doc => {
+        const order = doc.data();
+        const profit = await VHMProfit.calculate(order, sessions.get(doc.id) || [], readCost);
+        return { orderId: doc.id, revision: order.rev ?? 1,
+          discountCents: order.finance?.discount ?? null, merchandiseBeforeDiscountCents: order.finance?.amount ?? null,
+          deliveryFeeCents: order.finance?.deliveryFee ?? null, customerTotalCents: order.finance?.customerTotal ?? null,
+          courier: order.ship || null,
+          items: (order.items || []).map(item => ({ stockCode: item.stock || item.code, description: item.desc || '', quantity: item.qty, lineAmountCents: item.lineCents ?? null })), ...profit };
+      }));
+      if (request === generation) showReport(date, records);
+    } catch (error) {
+      if (request === generation) get('status').textContent = `Could not load the report (${error.code || 'read failed'}). Check Firebase access and try again.`;
+    }
+  }
+
+  get('filters').onsubmit = event => { event.preventDefault(); loadOrders(); };
+  get('date').onchange = () => { generation++; resetReport(); };
+  get('sign-in').onclick = async () => {
+    get('sign-in').disabled = true;
+    get('login-status').textContent = 'Opening Google sign-in…';
+    try {
+      await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+      await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    } catch (error) {
+      get('login-status').textContent = `Sign-in failed (${error.code || 'unknown error'}).`;
+    } finally { get('sign-in').disabled = false; }
+  };
+  get('sign-out').onclick = () => auth.signOut();
+  auth.onAuthStateChanged(async user => {
+    const request = ++generation;
+    authorized = false;
+    resetReport();
+    get('workspace').hidden = true;
+    get('login').hidden = false;
+    get('sign-out').hidden = !user;
+    get('sign-in').disabled = Boolean(user);
+    if (!user) { get('login-status').textContent = ''; return; }
+    try {
+      await read('sv2_profit_owner', 'access');
+      if (request !== generation) return;
+      authorized = true;
+      get('login').hidden = true;
+      get('workspace').hidden = false;
+      loadOrders();
+    } catch (error) {
+      if (request === generation) get('login-status').textContent = 'Owner access is unavailable for this account, or the Firebase rules still need to be published.';
+    }
+  });
+}
+
+get('export').onclick = () => {
+  if (!exportData) return;
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }));
+  link.download = `vhm-owner-${exportData.orderDate}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 30000);
+};
+
+init();
+
+    });
+  </script>
+</body>
+</html>
