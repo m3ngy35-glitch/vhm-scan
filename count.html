@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f4f5f7">
 <title>VHM Stock Count</title>
-<!-- VHM Stock Count 1.1 (2 Nov 2026) · scan PokPok labels to count stock; one scan counts for the PokPok item AND its Vrich stock code.
+<!-- VHM Stock Count 1.2 (9 Nov 2026) · 1.2: "Size chart" is the first sheet of the report (Stock Take layout: one block per product
+     code, colours across — 5 per band — sizes down with the counted qty beside each, colour totals underneath; a red number differs from
+     the PokPok qty and its cell comment shows the PokPok qty). "🖨 Print size chart" prints the same layout. Colour/size come from the
+     PokPok attributes ("-colour -size").
+     VHM Stock Count 1.1 (2 Nov 2026) · scan PokPok labels to count stock; one scan counts for the PokPok item AND its Vrich stock code.
      1.1: the map loads by itself from VHM Scan (sv2_meta/stockmap, published by the upload page after every PokPok / Vrich upload):
      1 read per open, the map itself only when it changed, and once more when a label is unknown (a brand-new code). A map file
      (upload page → "Map file for Stock Count") can still be opened by hand when there is no internet. No login.
@@ -101,13 +105,13 @@ main{max-width:860px;margin:0 auto;padding:6px 14px 80px}
     <div class="mut" style="margin-top:4px"><span class="bi"><span class="en">Scan each PokPok label once per piece. Type a product code (e.g. E366) to add it with 0 — every colour/size of a code you touch is in the report.</span><span class="km">ស្កេនស្លាក PokPok ម្តង ក្នុងមួយដុំ។ វាយកូដទំនិញ (ឧ. E366) ដើម្បីបន្ថែមវាជាមួយ 0 — គ្រប់ពណ៌/ទំហំនៃកូដដែលបានរាប់ មាននៅក្នុងរបាយការណ៍។</span></span></div>
     <div id="res"></div>
     <div id="pick" class="hide"></div>
-    <div class="row"><button id="undo"></button><button class="pri" id="export"></button><button class="danger" id="reset"></button></div>
+    <div class="row"><button id="undo"></button><button class="pri" id="export"></button><button id="printchart"></button><button class="danger" id="reset"></button></div>
     <div class="sum" id="tot"></div>
     <div id="codes"></div>
   </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>   <!-- SheetJS 0.18.5 + cell colours/borders (Size chart sheet) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -141,6 +145,7 @@ document.querySelectorAll('#langsw [data-l]').forEach(b => b.onclick = () => set
 $('undo').innerHTML = bl('↩ Undo last', '↩ ដកវិញ');
 $('export').innerHTML = bl('⬇ Export report (.xlsx)', '⬇ ទាញយករបាយការណ៍ (.xlsx)');
 $('reset').innerHTML = bl('New count', 'រាប់ថ្មី');
+$('printchart').innerHTML = bl('🖨 Print size chart', '🖨 បោះពុម្ពតារាងទំហំ');
 
 /* ---------- sounds ---------- */
 let actx = null;
@@ -272,6 +277,119 @@ $('reset').onclick = () => {
   C = { start: now(), counts: {}, codes: [], scans: [], unknown: {} }; LAST = ''; save(); render(); say('', '', ''); focusScan();
 };
 
+/* ---------- size chart (stock-take layout, as in the Stock Take sheet) ---------- */
+const SZ_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL'];
+const SZ_RE = /^(X{0,2}S|M|L|X{1,2}L|[2-7]XL|\d{1,2}(\.\d)?|F|FREE|FREESIZE)$/i;
+const cleanAttr = x => String(x || '').replace(/^[\s.;,]+|[\s.;,]+$/g, '').trim();
+function colourSize(it) {
+  const p = String(it[3] || '').split('-').map(cleanAttr).filter(Boolean);
+  if (p.length >= 2) {                     // usually "-colour -size", some codes are "-size -colour" (E156): the size is whichever part looks like one
+    let k = p.length - 1; if (!SZ_RE.test(p[k]) && SZ_RE.test(p[0])) k = 0;
+    return { col: p.filter((_, i) => i !== k).join(' '), size: p[k] };
+  }
+  if (p.length === 1) return SZ_RE.test(p[0]) ? { col: '—', size: p[0] } : { col: p[0], size: '—' };
+  return { col: '—', size: '—' };
+}
+const szRank = z => { const u = String(z).toUpperCase(), i = SZ_ORDER.indexOf(u); if (i >= 0) return i; const n = parseFloat(u); return isNaN(n) ? 900 : 100 + n; };
+// colour → [fill, text] for the colour cell (Khmer colour names as used on the PokPok labels)
+const COLOURS = { 'សរ': ['FFFFFF', '15171C'], 'ស': ['FFFFFF', '15171C'], 'ខ្មៅ': ['333333', 'FFFFFF'], 'ប្រផេះ': ['D9D9D9', '15171C'], 'សាច់': ['F2D7B6', '15171C'], 'ប៊ិច': ['1F3A7A', 'FFFFFF'], 'បិច': ['1F3A7A', 'FFFFFF'],
+  'បៃតង': ['3E7B4F', 'FFFFFF'], 'មេឃ': ['9CCBEB', '15171C'], 'ដី': ['A68B5B', 'FFFFFF'], 'ស្លែ': ['7A8450', 'FFFFFF'], 'កាហ្វេ': ['9C7B57', 'FFFFFF'], 'ប្រាក់': ['C9CCD1', '15171C'], 'ក្រហម': ['C62828', 'FFFFFF'],
+  'ខៀវ': ['2F6FED', 'FFFFFF'], 'ឈាមជ្រូក': ['7B1E2B', 'FFFFFF'], 'ឈូក': ['F4B6C2', '15171C'], 'ស្វាយ': ['7E57C2', 'FFFFFF'], 'សា្វយ': ['7E57C2', 'FFFFFF'], 'លឿង': ['F6D743', '15171C'], 'ក្រូច': ['F28C28', 'FFFFFF'],
+  'កាពិ': ['C3B091', '15171C'], 'កាពិក': ['C3B091', '15171C'], 'ត្នោត': ['6D4C33', 'FFFFFF'], 'គ្រីម': ['F3E9D2', '15171C'], 'ត្រាវ': ['B49AC8', '15171C'], 'ដិ': ['A68B5B', 'FFFFFF'] };
+const colourOf = c => COLOURS[c] || ['E5E7EB', '15171C'];
+const PER_BAND = 5;     // colours side by side, as in the Stock Take sheet
+// one block per product code: bands of ≤5 colours; each colour lists its sizes (counted > 0, or in PokPok stock) with the counted qty
+function sizeChart(codes) {
+  return codes.map(s => {
+    const cols = new Map();
+    variantsOf(s).forEach(it => {
+      const c = C.counts[nz(it[0])] || 0, sys = it[4]; if (!c && !(sys > 0)) return;
+      const { col, size } = colourSize(it), m = cols.get(col) || cols.set(col, new Map()).get(col);
+      const r = m.get(size) || m.set(size, { size, c: 0, sys: null }).get(size); r.c += c; if (sys != null) r.sys = (r.sys || 0) + sys;
+    });
+    const list = [...cols.entries()].map(([col, m]) => { const rows = [...m.values()].sort((a, b) => szRank(a.size) - szRank(b.size) || String(a.size).localeCompare(String(b.size))); return { col, rows, total: rows.reduce((a, r) => a + r.c, 0) }; });
+    const bands = []; for (let i = 0; i < list.length; i += PER_BAND) bands.push(list.slice(i, i + PER_BAND));
+    return { sale: s, bands, total: list.reduce((a, x) => a + x.total, 0) };
+  }).filter(b => b.bands.length);
+}
+const isDiff = r => r.sys != null && r.c !== r.sys;
+
+function sizeChartSheet(blocks, staff, stamp) {
+  const YEL = 'FCE8A6', line = { style: 'thin', color: { rgb: '000000' } }, B = { top: line, bottom: line, left: line, right: line };
+  const F = (extra) => Object.assign({ name: 'Noto Sans Khmer', sz: 13 }, extra || {});
+  const base = (fill, font, align) => ({ fill: { patternType: 'solid', fgColor: { rgb: fill } }, border: B, alignment: align || { horizontal: 'center', vertical: 'center' }, font: F(font) });
+  const aoa = [], st = [], hts = [], merges = [], notes = [];
+  const push = (cells, styles, h) => { aoa.push(cells); st.push(styles); hts.push({ hpt: h || 22 }); };
+  const W = PER_BAND * 2;
+  push(['VHM Stock Count · តារាងទំហំ', '', '', '', '', '', staff ? 'Counted by ' + staff : '', '', 'Exported ' + stamp.slice(0, 16), ''], Array(W).fill({ font: F({ bold: true, sz: 12 }), alignment: { vertical: 'center' } }), 24);
+  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, { s: { r: 0, c: 6 }, e: { r: 0, c: 7 } }, { s: { r: 0, c: 8 }, e: { r: 0, c: 9 } });
+  push(['Red number = different from the PokPok qty (its comment shows the PokPok qty) · លេខក្រហម = ខុសពីចំនួន PokPok'], [{ font: F({ sz: 10, color: { rgb: 'B91C1C' } }) }], 18);
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: W - 1 } });
+  blocks.forEach(b => {
+    push([''], [null], 10);
+    push([b.sale, ...Array(W - 1).fill('')], [base(YEL, { sz: 16, bold: true }), ...Array(W - 1).fill(base(YEL))], 26);
+    b.bands.forEach((band, bi) => {
+      const cr = [], cs = [];
+      for (let i = 0; i < PER_BAND; i++) { const x = band[i]; if (x) { const [f, t] = colourOf(x.col); cr.push(x.col, ''); cs.push(base(f, { bold: true, color: { rgb: t } }), base(YEL)); } else { cr.push('', ''); cs.push(base(YEL), base(YEL)); } }
+      push(cr, cs, 24);
+      const n = Math.max(...band.map(x => x.rows.length)) + 1;          // + 1 empty row to write in by hand
+      for (let r = 0; r < n; r++) {
+        const row = [], rs = [];
+        for (let i = 0; i < PER_BAND; i++) {
+          const x = band[i] && band[i].rows[r];
+          if (x) { row.push(x.size, x.c); rs.push(base('E5E7EB'), base(YEL, isDiff(x) ? { bold: true, color: { rgb: 'C62828' } } : null)); if (isDiff(x)) notes.push([aoa.length, i * 2 + 1, 'PokPok qty: ' + x.sys]); }
+          else { row.push('', ''); rs.push(base(band[i] ? 'E5E7EB' : YEL), base(YEL)); }
+        }
+        push(row, rs);
+      }
+      const tr = [], ts = [];
+      for (let i = 0; i < PER_BAND; i++) { const x = band[i]; tr.push(i === 0 && bi === b.bands.length - 1 ? 'សរុប ' + b.total : '', x ? x.total : ''); ts.push(base('FFFFFF', { sz: 12, bold: true }, { horizontal: 'left', vertical: 'center' }), base('FFFFFF', { bold: true })); }
+      push(tr, ts, 24);
+    });
+  });
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  st.forEach((row, r) => row.forEach((s, c) => { if (!s) return; const a = XLSX.utils.encode_cell({ r, c }); ws[a] = ws[a] || { t: 's', v: '' }; ws[a].s = s; }));
+  notes.forEach(([r, c, t]) => { const a = XLSX.utils.encode_cell({ r, c }); ws[a].c = [{ a: 'VHM', t }]; ws[a].c.hidden = true; });
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: W - 1 } });
+  ws['!cols'] = Array.from({ length: W }, (_, i) => ({ wch: i % 2 ? 9 : 14 }));
+  ws['!rows'] = hts; ws['!merges'] = merges;
+  ws['!margins'] = { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 };
+  return ws;
+}
+
+// the same layout as a page to print (A4 portrait; a code block never splits across two pages)
+function sizeChartHtml(blocks, staff, stamp) {
+  const body = blocks.map(b => `<table><tr><td class="code">${esc(b.sale)}</td>${'<td></td>'.repeat(PER_BAND * 2 - 1)}</tr>` + b.bands.map((band, bi) => {
+    let h = '<tr>' + Array.from({ length: PER_BAND }, (_, i) => { const x = band[i]; if (!x) return '<td></td><td></td>'; const [f, t] = colourOf(x.col); return `<td class="col"><span style="background:#${f};color:#${t}">${esc(x.col)}</span></td><td></td>`; }).join('') + '</tr>';
+    const n = Math.max(...band.map(x => x.rows.length)) + 1;
+    for (let r = 0; r < n; r++) h += '<tr>' + Array.from({ length: PER_BAND }, (_, i) => { const x = band[i] && band[i].rows[r]; return x ? `<td class="sz"><span>${esc(x.size)}</span></td><td class="q${isDiff(x) ? ' diff' : ''}">${x.c}${isDiff(x) ? `<small>PokPok ${x.sys}</small>` : ''}</td>` : `<td class="sz">${band[i] ? '<span>&nbsp;</span>' : ''}</td><td></td>`; }).join('') + '</tr>';
+    return h + '<tr class="tot">' + Array.from({ length: PER_BAND }, (_, i) => `<td class="lab">${i === 0 && bi === b.bands.length - 1 ? 'សរុប ' + b.total : ''}</td><td>${band[i] ? band[i].total : ''}</td>`).join('') + '</tr>';
+  }).join('') + '</table>').join('');
+  return `<!doctype html><html lang="km"><head><meta charset="utf-8"><title>Size chart ${esc(stamp.slice(0, 10))}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;700&display=swap" rel="stylesheet">
+<style>@page{size:A4 portrait;margin:10mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font:14px 'Noto Sans Khmer',system-ui,sans-serif;color:#15171c;margin:12px;background:#fff}
+.hd{display:flex;justify-content:space-between;gap:12px;font-weight:700;margin-bottom:4px}.lg{font-size:11px;color:#b91c1c;margin-bottom:8px}
+table{border-collapse:collapse;width:100%;table-layout:fixed;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid}
+td{border:1px solid #000;background:#fce8a6;height:30px;text-align:center;padding:2px 4px;font-size:15px}
+td.code{font-size:19px;font-weight:700}
+td.col span,td.sz span{display:block;border-radius:8px;padding:1px 4px;font-weight:700;line-height:22px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+td.col span{border:1px solid #bbb}td.sz span{background:#e5e7eb}
+td.q.diff{color:#c62828;font-weight:700}td.q small{display:block;font-size:9px;line-height:1;font-weight:400}
+tr.tot td{background:#fff;font-weight:700}tr.tot td.lab{text-align:left;font-size:13px}
+.bar{margin-bottom:10px}.bar button{font:inherit;padding:6px 16px;border-radius:8px;border:1px solid #2f6fed;background:#2f6fed;color:#fff;font-weight:700;cursor:pointer}
+@media print{.bar{display:none}body{margin:0}}</style></head><body>
+<div class="bar"><button onclick="print()">🖨 Print · បោះពុម្ព</button></div>
+<div class="hd"><span>VHM Stock Count · តារាងទំហំ</span><span>${staff ? 'Counted by ' + esc(staff) + ' · ' : ''}${esc(stamp.slice(0, 16))}</span></div>
+<div class="lg">Red number = different from the PokPok qty · លេខក្រហម = ខុសពីចំនួន PokPok</div>${body}</body></html>`;
+}
+$('printchart').onclick = () => {
+  if (!MAP || !C.codes.length) { say('warn', bl('Nothing counted yet', 'មិនទាន់បានរាប់អ្វីទេ'), ''); return; }
+  const w = window.open('', '_blank'); if (!w) { say('warn', bl('Allow pop-ups to print', 'សូមអនុញ្ញាត pop-up ដើម្បីបោះពុម្ព'), ''); return; }
+  w.document.write(sizeChartHtml(sizeChart(C.codes.slice().sort()), $('staff').value.trim(), now())); w.document.close();
+  w.onload = () => setTimeout(() => w.print(), 400);
+};
+
 /* ---------- report (.xlsx) ---------- */
 $('export').onclick = () => {
   if (!MAP || !C.codes.length && !Object.keys(C.unknown).length) { say('warn', bl('Nothing counted yet', 'មិនទាន់បានរាប់អ្វីទេ'), ''); return; }
@@ -289,6 +407,7 @@ $('export').onclick = () => {
   Object.keys(C.unknown).forEach(n => check.push(['', n, '(label not in the map)', C.unknown[n], 'Not counted — new label? Get a new map file', '']));
   const vRows = [...vMap.values()].sort((a, b) => (a.sale + a.stock).localeCompare(b.sale + b.stock)).map(v => [v.sale, v.stock, v.desc, v.n == null ? '' : v.n, v.from.join(', '), v.note || '']);
   const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sizeChartSheet(sizeChart(codes), staff, stamp), 'Size chart');
   const sheet = (name, head, rows, widths) => { const ws = XLSX.utils.aoa_to_sheet([head, ...rows]); ws['!cols'] = widths.map(w => ({ wch: w })); ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: head.length - 1 } }) }; XLSX.utils.book_append_sheet(wb, ws, name); };
   sheet('PokPok', ['Product code', 'PokPok code', 'Barcode', 'Name', 'Attributes', 'PokPok qty (system)', 'Counted', 'Difference', 'Vrich stock code', 'Map'], pokRows, [10, 11, 11, 18, 16, 12, 9, 10, 14, 26]);
   sheet('Vrich', ['Product code', 'Vrich stock code', 'Description', 'Counted', 'From PokPok items', 'Note'], vRows, [10, 16, 22, 9, 30, 30]);
@@ -297,7 +416,7 @@ $('export').onclick = () => {
   const info = XLSX.utils.aoa_to_sheet([['VHM Stock Count'], ['Counted by', staff], ['Started', C.start], ['Exported', stamp], ['Map made', String(MAP.at)], ['PokPok list', String(MAP.pok && MAP.pok.at || '')], ['Vrich list', String(MAP.vrich && MAP.vrich.at || '')], ['Product codes', codes.length], ['Pieces counted', Object.values(C.counts).reduce((a, n) => a + n, 0)]]);
   info['!cols'] = [{ wch: 16 }, { wch: 24 }]; XLSX.utils.book_append_sheet(wb, info, 'Info');
   XLSX.writeFile(wb, 'stock-count-' + stamp.slice(0, 16).replace(/[: ]/g, '-') + (staff ? '-' + staff.replace(/[^\wក-៿-]+/g, '') : '') + '.xlsx');
-  say('ok', bl('⬇ Report downloaded', '⬇ បានទាញយករបាយការណ៍'), bl('PokPok sheet → PokPok person · Vrich sheet → Vrich person · Check → manager', 'សន្លឹក PokPok → អ្នក PokPok · សន្លឹក Vrich → អ្នក Vrich · ពិនិត្យ → អ្នកគ្រប់គ្រង'));
+  say('ok', bl('⬇ Report downloaded', '⬇ បានទាញយករបាយការណ៍'), bl('Size chart → print / check · PokPok sheet → PokPok person · Vrich sheet → Vrich person · Check → manager', 'តារាងទំហំ → បោះពុម្ព · សន្លឹក PokPok → អ្នក PokPok · សន្លឹក Vrich → អ្នក Vrich · ពិនិត្យ → អ្នកគ្រប់គ្រង'));
 };
 
 /* ---------- start ---------- */
